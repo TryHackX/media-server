@@ -242,6 +242,13 @@ def _diagnostic_token(args: argparse.Namespace, config: AppConfig) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
+    for stream in (sys.stdout, sys.stderr):
+        # Reports go out as JSON with ensure_ascii=False, so one Polish file
+        # name — or one diagnostic — is enough to end the command with a
+        # UnicodeEncodeError on a console still using the system code page.
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is not None:
+            reconfigure(encoding="utf-8", errors="replace")
     parser = _parser()
     args = parser.parse_args(argv)
     command = args.command or "serve"

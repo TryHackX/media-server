@@ -3,7 +3,9 @@ from __future__ import annotations
 import argparse
 import base64
 import json
+import os
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -73,6 +75,30 @@ def test_generated_config_contains_private_thumbnail_cache(tmp_path: Path) -> No
 
 def test_installer_rejects_config_only_with_frontend_build() -> None:
     assert install.main(["--config-only", "--build-frontend"]) == 1
+
+
+def test_the_installer_runs_on_a_console_that_cannot_encode_polish(tmp_path: Path) -> None:
+    """Windows hands a fresh process the system code page and stdout is strict,
+    so on any Western-European installation the first Polish sentence used to
+    end the installer with a UnicodeEncodeError — which is exactly why the CI
+    job "Installer dry run (windows-latest)" had been failing from the start.
+    This is the CI command, with the encoding pinned to reproduce it."""
+    music = tmp_path / "music"
+    music.mkdir()
+    result = subprocess.run(
+        [
+            sys.executable, str(Path(install.__file__)),
+            "--dev", "--non-interactive", "--dry-run",
+            "--config", str(tmp_path / "config.local.toml"),
+            "--music-root", str(music),
+        ],
+        capture_output=True,
+        text=True,
+        env={**os.environ, "PYTHONIOENCODING": "cp1252", "MEDIA_SERVER_DB_PASSWORD": "test-only"},
+    )
+
+    assert "UnicodeEncodeError" not in result.stderr, result.stderr
+    assert result.returncode == 0, result.stdout + result.stderr
 
 
 def test_a_placeholder_config_stops_the_install_before_the_environment_is_built(

@@ -261,7 +261,22 @@ def _parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _allow_polish_output() -> None:
+    """Keep the diagnostics printable on a console that predates Unicode.
+
+    Windows hands a fresh process the system code page, and stdout is strict:
+    on any Western-European installation the first sentence containing "ż" ends
+    the installer with a UnicodeEncodeError, several steps before it does
+    anything useful. stderr escapes such characters by itself, stdout does not.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is not None:
+            reconfigure(encoding="utf-8", errors="replace")
+
+
 def main(argv: list[str] | None = None) -> int:
+    _allow_polish_output()
     args = _parser().parse_args(argv)
     if args.config_only and args.build_frontend:
         print("--config-only i --build-frontend nie mogą być użyte razem", file=sys.stderr)

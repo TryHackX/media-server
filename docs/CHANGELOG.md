@@ -2,10 +2,14 @@
 
 Zamknięte etapy i serie zmian; otwarte prace są wyłącznie w `ROADMAP.md`.
 
-## 17.08.2026 (nad ranem, później) — czysta instalacja na Windows i **koniec M6**
+## 17.08.2026 (nad ranem, później) — czysta instalacja na Windows, **koniec M6**, wydanie 0.1.0 i 0.1.1
 
 Bez migracji. Backup przed serią: `C:\wamp64\backups\media-server-20260817-pre-clean-install`
 oraz `…-pre-clean-install.sql`.
+
+Repozytorium zaczęte od nowa: jeden osierocony commit z tagiem **`v0.1.0`**, bez wcześniejszej
+historii i bez plików, których dziś nie ma. Zaraz po wypchnięciu CI wskazało błąd kodowania
+opisany niżej — poprawka wyszła jako **`v0.1.1`**.
 
 - **Ostatni punkt M6 zamknięty.** Instalacja od zera na Windows, z drzewa zawierającego wyłącznie
   to, co widzi git — czyli **bez** `.venv`, prywatnej konfiguracji, `runtime/`, `node_modules`
@@ -58,14 +62,30 @@ oraz `…-pre-clean-install.sql`.
   przez gita, a nie kopia katalogu roboczego.
 - Sprzątnięte: usługa zatrzymana skryptem, baza i konto usunięte, drzewo skasowane. Sprawdzone
   po fakcie: port 8766 wolny, została wyłącznie baza `media_server_stage`, staging oddaje `ready`.
+- **CI od pierwszego commita mówiło prawdę, tylko nikt jej nie przeczytał.** Po wypchnięciu
+  wydania jeden job był czerwony — „Installer dry run (windows-latest)" — i okazało się, że
+  czerwony był **od samego początku repozytorium**. Powód: **instalator wywala się na Windowsie,
+  którego strona kodowa nie zna polskich znaków.** Windows daje świeżemu procesowi systemową
+  stronę kodową, a `stdout` jest bezlitosny — pierwsze zdanie ze znakiem `ż` kończy się
+  `UnicodeEncodeError`, kilka kroków przed zrobieniem czegokolwiek. Na polskim Windowsie (cp1250)
+  problem nie istnieje, więc tutaj nie miał prawa się pokazać. Odtworzone jednym poleceniem:
+  `PYTHONIOENCODING=cp1252 python scripts/install.py --dry-run …` → kod wyjścia 1.
+- **To samo groziło poleceniom `media-server`.** Raporty wychodzą jako JSON z `ensure_ascii=False`,
+  więc **jedna polska nazwa pliku w raporcie skanu** wystarczyłaby, żeby zabić polecenie. Różnica
+  jest taka, że `stderr` Python sam ratuje (`backslashreplace`), a `stdout` nie — czyli ginie
+  dokładnie to, co niesie wynik pracy. Oba wejścia dostały to samo zabezpieczenie, które
+  `check.py` miał od dawna: strumienie przestawiane na UTF-8 z `errors="replace"`, **zanim
+  cokolwiek zdąży coś wypisać**.
 - **Runbook testów zapisany osobno.** `docs/TESTING.md` (dokument roboczy, poza repozytorium,
   jak `NEXT-SESSION.md`): kolejność sprawdzania, komendy dla obu platform, poziomy odniesienia
   i lista pułapek, które już raz zjadły czas — po to, żeby kolejne wydanie nie odkrywało ich
   drugi raz.
-- Testy: **10 nowych** — pięć na odrzucanie limitów poza zakresem przed rozpoczęciem pracy,
+- Testy: **12 nowych** — pięć na odrzucanie limitów poza zakresem przed rozpoczęciem pracy,
   trzy na odnajdywanie `ffprobe` (goła nazwa przez `PATH`, brakujące rodzeństwo z odwrotem do
-  `PATH`, przenoszenie przyrostka `.exe`) i dwa na wczesną walidację konfiguracji w instalatorze.
-  Bramka: 8/8, **307 testów**.
+  `PATH`, przenoszenie przyrostka `.exe`), dwa na wczesną walidację konfiguracji w instalatorze
+  i dwa na stronę kodową: instalator uruchamiany dokładnie komendą z CI przy wymuszonym cp1252
+  oraz sprawdzenie, że polecenia `media-server` przestawiają strumienie, **zanim** cokolwiek
+  wypiszą. Bramka: 8/8, **309 testów**.
 
 ## 17.08.2026 (nad ranem) — ścieżka debianowa przeszła próbę na prawdziwym Debianie
 
