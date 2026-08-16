@@ -1,0 +1,146 @@
+@layer pages {
+  .collections-page {
+    display: grid;
+    gap: var(--space-5);
+  }
+
+  .collection-browser-toolbar {
+    display: grid;
+    gap: var(--space-4);
+    padding: var(--space-5);
+  }
+
+  .collection-browser-filters {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+    gap: var(--space-3);
+  }
+
+  .collection-browser-toolbar__footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+
+  .collection-browser-status {
+    color: var(--color-text-muted);
+  }
+
+  /* Wider than it was: at 22rem three columns fitted on a desktop and the copy
+     had to be squeezed into a strip too narrow for a sentence, which is why the
+     description had nowhere to go. Two roomy columns beat three cramped ones. */
+  .collection-browser-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 32rem), 1fr));
+    gap: var(--space-4);
+  }
+
+  .collection-browser-card {
+    display: grid;
+    min-width: 0;
+    grid-template-columns: minmax(0, 1fr) auto;
+    overflow: visible;
+  }
+
+  .collection-browser-card__link {
+    display: grid;
+    min-width: 0;
+    grid-template-columns: 3rem minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-4);
+  }
+
+  .collection-browser-card__icon {
+    display: grid;
+    width: 3rem;
+    height: 3rem;
+    place-items: center;
+    overflow: hidden;
+    border-radius: var(--radius-md);
+    background: var(--color-accent-soft);
+    color: var(--color-accent);
+  }
+
+  /* An own playlist cover replaces the generic icon in the same 3rem box. */
+  .collection-browser-card__cover {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .collection-browser-card__copy,
+  .collection-browser-card__copy strong,
+  .collection-browser-card__copy small,
+  .collection-browser-card__copy span {
+    display: block;
+    min-width: 0;
+  }
+
+  .collection-browser-card__copy strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .collection-browser-card__copy small,
+  .collection-browser-card__copy span {
+    margin-top: var(--space-1);
+    color: var(--color-text-muted);
+    font-size: 0.78rem;
+  }
+
+  /* Must outweigh the `.collection-browser-card__copy span` rule above. */
+  .collection-browser-card__copy .collection-browser-card__statistics {
+    color: var(--color-accent);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Two lines of what its author wanted said; a longer note keeps the rest of
+     the card the same height instead of pushing the numbers out of line. */
+  .collection-browser-card__copy .collection-browser-card__description {
+    display: -webkit-box;
+    overflow: hidden;
+    color: var(--color-text);
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .collection-browser-card.is-editing {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .collection-browser-card__edit {
+    display: grid;
+    gap: var(--space-3);
+    padding: var(--space-4);
+  }
+
+  .collection-browser-card__edit-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  .collection-browser-card__actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding-right: var(--space-3);
+  }
+
+  .collection-browser-card__actions .is-active {
+    color: var(--color-accent);
+  }
+
+  @media (max-width: 68rem) {
+    .collection-browser-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+
+  @media (max-width: 38rem) {
+    .collection-browser-filters { grid-template-columns: 1fr; }
+    .collection-browser-toolbar__footer { align-items: stretch; flex-direction: column; }
+  }
+}

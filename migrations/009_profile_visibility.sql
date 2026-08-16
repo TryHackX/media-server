@@ -1,0 +1,2 @@
+ALTER TABLE users
+  ADD COLUMN profile_public TINYINT(1) NOT NULL DEFAULT 0 AFTER is_active

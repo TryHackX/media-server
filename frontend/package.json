@@ -1,0 +1,21 @@
+{
+  "name": "tryhackx-media-web",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "test:ui": "node --test src/shared/player-state.test.ts src/shared/visualizations/registry.test.ts src/shared/i18n.test.ts"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2",
+    "vite": "^8.2.1"
+  },
+  "dependencies": {
+    "@fortawesome/fontawesome-free": "^7.3.0",
+    "cropperjs": "^1.6.2"
+  }
+}

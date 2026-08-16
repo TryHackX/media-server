@@ -1,0 +1,1 @@
+export { mountLibraryPage as mountMediaPage } from "./library-page";

@@ -1,0 +1,42 @@
+[Unit]
+Description=TryHackX Media Server — przebieg okresowy (skan, kolejka metadanych, gatunki filmów)
+Documentation=file:/opt/tryhackx-media-server/current/docs/INSTALL-DEBIAN.md
+After=network.target mysql.service mariadb.service tryhackx-media-transfer.service
+
+[Service]
+Type=oneshot
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/tryhackx-media-server/current
+Environment=MEDIA_SERVER_CONFIG=/etc/tryhackx-media-server/config.local.toml
+Environment=MEDIA_SERVER_LOG_DIR=/var/log/tryhackx-media-server
+ExecStart=/opt/tryhackx-media-server/current/.venv/bin/python -m media_server maintenance --metadata-limit 500 --titles-limit 50
+
+# Type=oneshot ma domyślny limit 90 s, a skan dziewiętnastu tysięcy plików go
+# przekroczy — bez tej linii systemd zabijałby przebieg w połowie każdej nocy.
+TimeoutStartSec=6h
+# Nocna robota ustępuje odtwarzaniu: gdyby ktoś oglądał film o czwartej rano,
+# ma to być jego film, a nie skan.
+Nice=10
+IOSchedulingClass=idle
+
+StateDirectory=tryhackx-media-server
+StateDirectoryMode=0750
+LogsDirectory=tryhackx-media-server
+LogsDirectoryMode=0750
+
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+# Jak w usłudze transferowej: /home jest niewidoczne, więc biblioteki mają
+# leżeć poza nim — inaczej skan zgłosi masowe zniknięcie plików i odmówi.
+ProtectHome=true
+UMask=0027
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+LockPersonality=true
+MemoryDenyWriteExecute=true

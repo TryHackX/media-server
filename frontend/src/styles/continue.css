@@ -1,0 +1,237 @@
+@layer pages {
+  /* The start page's "continue" shelves, under the two library cards: those are
+     the doors into the collection, these are what is already open. Newest first,
+     two rows at most, and no sideways scrolling. */
+  .continue-shelf {
+    display: grid;
+    gap: var(--space-8);
+    margin-top: var(--space-8);
+  }
+
+  .continue-shelf:empty {
+    display: none;
+  }
+
+  .continue-section {
+    display: grid;
+    gap: var(--space-4);
+  }
+
+  .continue-section__header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--space-2) var(--space-4);
+  }
+
+  .continue-section__header h2 {
+    margin: 0;
+    font-size: 1.25rem;
+  }
+
+  .continue-section__header p {
+    margin: 0;
+    font-size: 0.9rem;
+  }
+
+  /* A shelf wraps instead of scrolling sideways: a horizontal scrollbar on the
+     start page hides half the titles behind a gesture. The grid fits whatever
+     columns the window allows and home.ts puts away everything past two rows. */
+  .continue-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+    gap: var(--space-4);
+  }
+
+  .continue-card.is-beyond-shelf {
+    display: none;
+  }
+
+  .continue-card {
+    position: relative;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    /* Nothing inside may widen the card: the "po: …" line is a single nowrap
+       run, and its min-content would otherwise stretch the column — and with it
+       the poster, which keeps its aspect ratio — far past the shelf's track. */
+    grid-template-columns: minmax(0, 1fr);
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: var(--color-surface);
+    transition:
+      border-color var(--duration-normal) var(--ease-standard),
+      transform var(--duration-normal) var(--ease-standard);
+  }
+
+  .continue-card:hover,
+  .continue-card:focus-within {
+    border-color: var(--color-border-strong);
+    transform: translateY(-2px);
+  }
+
+  .continue-card__open {
+    display: block;
+    padding: 0;
+    border: 0;
+    background: none;
+    cursor: pointer;
+  }
+
+  .continue-card__preview {
+    position: relative;
+    display: grid;
+    /* Wide enough for a film still, tall enough that a square cover still reads. */
+    aspect-ratio: 16 / 10;
+    place-items: center;
+    background: var(--color-canvas-raised);
+    color: var(--color-text-subtle);
+  }
+
+  .continue-card__preview .icon {
+    width: 2.2rem;
+    height: 2.2rem;
+    font-size: 1.9rem;
+  }
+
+  .continue-card__preview.has-image > .icon {
+    display: none;
+  }
+
+  .continue-card__image {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .continue-card__play {
+    position: absolute;
+    display: grid;
+    width: 2.9rem;
+    height: 2.9rem;
+    place-items: center;
+    border-radius: 50%;
+    background: rgb(3 7 12 / 62%);
+    color: var(--color-text);
+    opacity: 0;
+    transition: opacity var(--duration-fast) var(--ease-standard);
+  }
+
+  .continue-card__play .icon {
+    width: 1.1rem;
+    height: 1.1rem;
+    font-size: 1rem;
+    color: inherit;
+  }
+
+  .continue-card:hover .continue-card__play,
+  .continue-card__open:focus-visible .continue-card__play {
+    opacity: 1;
+  }
+
+  /* Sits on the poster's bottom edge, so the card says "how far in" before it is read. */
+  .continue-card__progress {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 0.28rem;
+    background: rgb(3 7 12 / 62%);
+  }
+
+  .continue-card__progress-fill {
+    display: block;
+    height: 100%;
+    background: var(--color-accent);
+  }
+
+  .continue-card__body {
+    display: grid;
+    align-content: start;
+    gap: var(--space-1);
+    padding: var(--space-3) var(--space-4) var(--space-4);
+  }
+
+  .continue-card__title {
+    margin: 0;
+    overflow: hidden;
+    font-size: 0.95rem;
+    line-height: 1.35;
+    /* Two lines, then an ellipsis: film file names are long and the cards must
+       stay the same height across the row. */
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  .continue-card__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1) var(--space-2);
+    min-width: 0;
+    margin: 0;
+    color: var(--color-text-muted);
+    font-size: 0.82rem;
+  }
+
+  .continue-card__meta > span:last-child {
+    overflow: hidden;
+    max-width: 100%;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .continue-card__badge {
+    padding: 0.1rem 0.45rem;
+    border-radius: var(--radius-sm);
+    background: var(--color-accent-soft);
+    color: var(--color-accent);
+    font-size: 0.72rem;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  /* A quiet ghost until the card is touched: dismissing is available, not urgent.
+     Written against the card rather than the button alone, because
+     `.icon-button[data-tooltip]` (library.css) claims position: relative and would
+     otherwise drop this control back into the flow. */
+  .continue-card .continue-card__dismiss {
+    position: absolute;
+    top: var(--space-2);
+    right: var(--space-2);
+    min-height: 2.1rem;
+    width: 2.1rem;
+    border-color: transparent;
+    background: rgb(3 7 12 / 62%);
+    opacity: 0;
+    transition: opacity var(--duration-fast) var(--ease-standard);
+  }
+
+  .continue-card:hover .continue-card__dismiss,
+  .continue-card__dismiss:focus-visible {
+    opacity: 1;
+  }
+
+  @media (hover: none) {
+    /* Nothing hovers on a phone, so both controls stay visible there — and the
+       dismiss button grows to a size a thumb can actually hit. */
+    .continue-card__dismiss,
+    .continue-card__play {
+      opacity: 1;
+    }
+
+    .continue-card .continue-card__dismiss {
+      min-height: 2.6rem;
+      width: 2.6rem;
+    }
+  }
+
+  @media (width <= 48rem) {
+    .continue-row {
+      grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+      gap: var(--space-3);
+    }
+  }
+}

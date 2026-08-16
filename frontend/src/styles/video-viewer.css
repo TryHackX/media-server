@@ -1,0 +1,350 @@
+@layer pages {
+  .viewer__video-stage {
+    position: relative;
+  }
+
+  .viewer__fullscreen-close {
+    display: none;
+  }
+
+  .viewer__video-stage:fullscreen {
+    position: relative;
+    display: grid;
+    width: 100vw;
+    height: 100dvh;
+    overflow: hidden;
+    place-items: center;
+    background: #020406;
+  }
+
+  .viewer__video-stage:fullscreen .viewer__video {
+    width: 100vw;
+    height: 100dvh;
+    max-height: none;
+    object-fit: contain;
+  }
+
+  /* The subtitle overlay has to take the same box as the video, or the two would
+     letterbox differently and the words would drift off the picture. The video
+     is centred in the frame by the grid; this centres an identical box on the
+     same point, and `contain` then puts both in exactly the same place. */
+  .viewer__video-stage:fullscreen .viewer__subtitle-picture {
+    top: 50%;
+    right: auto;
+    bottom: auto;
+    left: 50%;
+    width: 100vw;
+    height: 100dvh;
+    transform: translate(-50%, -50%);
+  }
+
+  .viewer__video-stage:fullscreen .viewer-controls {
+    position: absolute;
+    right: clamp(0.7rem, 2vw, 2rem);
+    bottom: clamp(0.7rem, 2vw, 2rem);
+    left: clamp(0.7rem, 2vw, 2rem);
+    display: block;
+    border: 1px solid rgb(255 255 255 / 12%);
+    border-radius: 1.15rem;
+    background: linear-gradient(180deg, rgb(7 12 18 / 58%), rgb(4 8 13 / 86%));
+    box-shadow: 0 1rem 4rem rgb(0 0 0 / 42%);
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(0.75rem);
+    transition: opacity 220ms ease, transform 220ms ease;
+    backdrop-filter: blur(1rem) saturate(135%);
+  }
+
+  .viewer__video-stage:fullscreen:is(.is-controls-visible, .is-seeking) .viewer-controls {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+  }
+
+  .viewer__video-stage:fullscreen .viewer-controls__primary {
+    display: grid;
+    gap: clamp(0.45rem, 1.2vw, 1rem);
+    padding: clamp(0.55rem, 1.2vw, 0.9rem) clamp(0.7rem, 1.5vw, 1.15rem);
+  }
+
+  .viewer__video-stage:fullscreen .viewer-controls__primary > :is(button, .viewer-controls__progress-wrap, .icon),
+  .viewer__video-stage:fullscreen .viewer-controls__volume {
+    display: inline-grid;
+  }
+
+  .viewer__video-stage:fullscreen .viewer-controls__progress,
+  .viewer__video-stage:fullscreen .viewer-controls__volume {
+    display: block;
+  }
+
+  .viewer__video-stage:fullscreen .viewer-controls__fullscreen,
+  .viewer__video-stage:fullscreen .viewer-controls__tracks,
+  .viewer__video-stage:fullscreen .viewer__compatibility {
+    display: none;
+  }
+
+  .viewer__video-stage:fullscreen .viewer__fullscreen-close {
+    position: absolute;
+    top: clamp(0.75rem, 2vw, 2rem);
+    right: clamp(0.75rem, 2vw, 2rem);
+    z-index: 3;
+    display: grid;
+    width: 3rem;
+    height: 3rem;
+    border-color: rgb(255 255 255 / 14%);
+    background: rgb(4 8 13 / 68%);
+    color: #fff;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-0.4rem);
+    transition: opacity 220ms ease, transform 220ms ease;
+    backdrop-filter: blur(1rem);
+  }
+
+  .viewer__video-stage:fullscreen.is-controls-visible .viewer__fullscreen-close {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+  }
+
+  @media (max-width: 40rem) {
+    .viewer__video-stage:fullscreen .viewer-controls__primary > .icon,
+    .viewer__video-stage:fullscreen .viewer-controls__volume {
+      display: none;
+    }
+  }
+}
+
+@layer pages {
+  /* Reference material about the file, laid out under the picture across the full
+     width of the player. It used to be a <details> nobody wanted to unfold twice —
+     these are facts, and facts are cheaper to read than to reveal. */
+  .viewer__technical {
+    width: 100%;
+    padding: var(--space-4);
+    background: var(--color-canvas-raised);
+  }
+
+  /* Fullscreen is for watching; the panel would sit on top of the film. */
+  .viewer__video-stage:fullscreen .viewer__technical {
+    display: none;
+  }
+
+  .viewer__technical-heading {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin: 0 0 var(--space-3);
+    color: var(--color-text-muted);
+    font-size: 0.85rem;
+    font-weight: 700;
+  }
+
+  /* Two columns of facts where there is room, one where there is not. */
+  .viewer__technical-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(22rem, 1fr));
+    margin: 0;
+    gap: var(--space-2) var(--space-6);
+  }
+
+  .viewer__technical-row {
+    display: grid;
+    grid-template-columns: minmax(4.5rem, 6rem) minmax(0, 1fr);
+    gap: var(--space-3);
+    font-size: 0.82rem;
+  }
+
+  /* The path is the one line that has no business wrapping into four. Named
+     rather than :last-child, because it no longer always sits last — the rows
+     that fold away moved it into the expander. */
+  .viewer__technical-row--path {
+    grid-column: 1 / -1;
+  }
+
+  .viewer__technical-row--path dd {
+    overflow-wrap: anywhere;
+    color: var(--color-text-muted);
+  }
+
+  .viewer__technical-row dt {
+    color: var(--color-text-subtle);
+  }
+
+  .viewer__technical-row dd {
+    margin: 0;
+    color: var(--color-text);
+  }
+
+  /* Unfolded, the extra rows scroll inside themselves rather than growing the
+     panel. A disc rip with a dozen dubs and twenty subtitle tracks used to push
+     the delivery note — the line that explains what the picture is doing — off
+     the bottom of the modal, so the answer arrived by taking the question away. */
+  .viewer__technical-more[open] > .viewer__technical-grid {
+    max-height: min(34dvh, 18rem);
+    overflow-y: auto;
+    margin-top: var(--space-2);
+    padding-right: var(--space-3);
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border-strong) transparent;
+    /* Reserved rather than overlaid, so unfolding does not nudge the columns. */
+    scrollbar-gutter: stable;
+  }
+
+  .viewer__technical-more[open] > .viewer__technical-grid::-webkit-scrollbar {
+    width: 0.55rem;
+  }
+
+  .viewer__technical-more[open] > .viewer__technical-grid::-webkit-scrollbar-thumb {
+    border: 0.15rem solid transparent;
+    border-radius: var(--radius-md);
+    background: var(--color-border-strong);
+    background-clip: padding-box;
+  }
+
+  .viewer__technical-more[open] > .viewer__technical-grid::-webkit-scrollbar-thumb:hover {
+    background: var(--color-text-subtle);
+    background-clip: padding-box;
+  }
+
+  .viewer__technical-more > summary {
+    color: var(--color-text-muted);
+    cursor: pointer;
+    font-size: 0.82rem;
+  }
+}
+
+@layer pages {
+  /* The panel behind the credits. It sits over the last frame rather than under
+     the player, so the film that just ended stays the backdrop — and it lives
+     inside the stage, so it works in fullscreen as well. */
+  .viewer__up-next {
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+    display: grid;
+    align-content: center;
+    gap: var(--space-4);
+    overflow-y: auto;
+    padding: clamp(var(--space-4), 3vw, var(--space-8));
+    background: rgb(3 7 12 / 88%);
+    backdrop-filter: blur(0.5rem);
+  }
+
+  .viewer__up-next-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--space-2) var(--space-4);
+  }
+
+  .viewer__up-next-head h2,
+  .viewer__up-next-head h3 {
+    margin: 0;
+    font-size: 1.15rem;
+  }
+
+  .viewer__up-next-countdown {
+    margin: 0;
+    margin-right: auto;
+    color: var(--color-text-muted);
+    font-size: 0.85rem;
+  }
+
+  .viewer__up-next-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+    gap: var(--space-3);
+  }
+
+  .viewer__up-next-card {
+    display: grid;
+    overflow: hidden;
+    padding: 0;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+    cursor: pointer;
+    text-align: left;
+    transition: border-color var(--duration-fast) var(--ease-standard), transform var(--duration-fast) var(--ease-standard);
+  }
+
+  .viewer__up-next-card:hover,
+  .viewer__up-next-card:focus-visible {
+    border-color: var(--color-accent);
+    transform: translateY(-2px);
+  }
+
+  /* The next episode is the one the countdown is for, so it says so in colour. */
+  .viewer__up-next-card.is-primary {
+    grid-column: span 2;
+    border-color: var(--color-accent);
+  }
+
+  .viewer__up-next-thumb {
+    display: block;
+    aspect-ratio: 16 / 9;
+    background: var(--color-canvas-raised);
+  }
+
+  .viewer__up-next-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .viewer__up-next-copy {
+    display: grid;
+    gap: 0.15rem;
+    padding: var(--space-2) var(--space-3) var(--space-3);
+  }
+
+  .viewer__up-next-badge {
+    color: var(--color-accent);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+
+  .viewer__up-next-title {
+    overflow: hidden;
+    color: var(--color-text);
+    font-size: 0.88rem;
+    line-height: 1.3;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  .viewer__up-next-meta {
+    color: var(--color-text-subtle);
+    font-size: 0.78rem;
+  }
+
+  @media (width <= 48rem) {
+    .viewer__up-next-grid {
+      grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr));
+    }
+
+    .viewer__up-next-card.is-primary {
+      grid-column: 1 / -1;
+    }
+  }
+
+  /* Whatever did not fit the four lines that matter. */
+  .viewer__technical-more {
+    margin-top: var(--space-3);
+    border-top: 1px solid var(--color-border);
+    padding-top: var(--space-3);
+  }
+
+  .viewer__technical-more summary {
+    color: var(--color-text-muted);
+    cursor: pointer;
+    font-size: 0.82rem;
+  }
+
+  .viewer__technical-more .viewer__technical-grid {
+    margin-top: var(--space-3);
+  }
+}

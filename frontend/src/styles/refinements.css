@@ -1,0 +1,838 @@
+@layer pages {
+  .library-sort {
+    width: auto;
+    min-width: 12rem;
+  }
+
+  .library-toolbar__actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .media-card {
+    grid-template-rows: auto minmax(0, 1fr) auto auto auto;
+    isolation: isolate;
+  }
+
+  .media-card__open {
+    overflow: hidden;
+    border-radius: calc(var(--radius-lg) - 1px) calc(var(--radius-lg) - 1px) 0 0;
+  }
+
+  .media-card__preview {
+    border-radius: inherit;
+    background-clip: padding-box;
+  }
+
+  .media-card > .rating-picker {
+    width: 100%;
+    justify-content: center;
+    margin: 0 0 var(--space-2);
+    padding-inline: var(--space-3);
+  }
+
+  .media-card > .rating-picker .rating-picker__label {
+    min-width: 0;
+    flex: 0 1 auto;
+  }
+
+  .media-card > .button--primary {
+    width: auto;
+    margin: 0 var(--space-3);
+  }
+
+  .media-card__footer {
+    min-width: 0;
+    justify-content: center;
+    margin-top: var(--space-2);
+  }
+
+  /* The folder and playlist rows hold a wide "play" plus square icons, and they
+     must stay one row. With a third icon the row was one gap too wide for a
+     295 px card, so `flex-wrap` sent the last button to a line of its own — one
+     card grew taller than its neighbours and the shelf went ragged. The primary
+     is the part that can give: it shrinks (which needs `min-width: 0`, since a
+     flex item refuses to go below its content by default) and its label is
+     clipped rather than pushing anything out of the row. */
+  .media-card--folder .media-card__footer,
+  .media-card--playlist .media-card__footer {
+    flex-wrap: nowrap;
+  }
+
+  .media-card--folder .media-card__footer > .button--primary,
+  .media-card--playlist .media-card__footer > .button--primary {
+    min-width: 0;
+    flex: 1 1 auto;
+    overflow: hidden;
+  }
+
+  .media-card--folder .media-card__footer > .button--primary > span,
+  .media-card--playlist .media-card__footer > .button--primary > span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .media-card--folder .media-card__footer > .icon-button,
+  .media-card--playlist .media-card__footer > .icon-button {
+    flex: 0 0 auto;
+  }
+
+  /* A track card's footer is a row of equal icon buttons, so it divides the
+     width evenly. The playlist card keeps its "play" in the footer, the way the
+     folder card does, and there the primary has to take the room it needs while
+     the icons stay square — that is the flex row from pages.css, left alone. */
+  .media-card:not(.media-card--folder):not(.media-card--playlist) .media-card__footer {
+    display: grid;
+    width: auto;
+    grid-template-columns: repeat(auto-fit, minmax(2rem, 1fr));
+    margin-inline: var(--space-3);
+    padding-inline: 0;
+  }
+
+  .media-card:not(.media-card--folder):not(.media-card--playlist) .media-card__footer .icon-button {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .media-card--folder .media-card__body .rating-inline--summary {
+    justify-content: center;
+  }
+
+  .cover-editor__workspace {
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
+    flex-direction: column;
+  }
+
+  .cover-editor__current {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+  }
+
+  .cover-editor__preview {
+    width: min(100%, 15rem);
+    flex: 0 0 auto;
+  }
+
+  .cover-editor__current-actions {
+    width: min(100%, 22rem);
+  }
+
+  .metadata-form__actions {
+    align-items: center;
+    justify-content: center;
+  }
+
+  .smart-rules__hint {
+    grid-column: 1 / -1;
+
+    color: var(--color-text-muted);
+    font-size: 0.78rem;
+  }
+  .viewer__video-frame {
+    position: relative;
+    display: grid;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    place-items: center;
+    overflow: hidden;
+    background: #020406;
+  }
+
+  .viewer__video-frame .viewer__video,
+  .viewer__freeze-frame {
+    width: 100%;
+    height: 100%;
+    max-height: none;
+    object-fit: contain;
+    background: #020406;
+  }
+
+  /* A picture subtitle laid over the film. The server renders each cue onto a
+     canvas exactly the size of the video frame, so obeying the same two rules as
+     the video element — fill the box, contain inside it — letterboxes both
+     identically and lines them up to the pixel, with no arithmetic anywhere.
+     Transparent, so it needs no background of its own. */
+  .viewer__subtitle-picture {
+    position: absolute;
+    z-index: 2;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  /* Shown outright, with no fade. A subtitle has a moment it belongs to, and
+     easing it in spends the first tenth of that moment on an effect nobody asked
+     for; the word should simply be there when it is said. */
+  .viewer__subtitle-picture.is-visible {
+    opacity: 1;
+  }
+
+  .viewer__freeze-frame {
+    position: absolute;
+    z-index: 2;
+    inset: 0;
+    pointer-events: none;
+  }
+
+/* Centre playback overlay — "Glass Halo". Animates transform/opacity/stroke
+   only; the badge samples the video through backdrop-filter, so no ancestor
+   may carry opacity < 1 (that would create a Backdrop Root and flatten it). */
+
+  /* ── 1. Overlay shell ─────────────────────────────────────────────────── */
+
+  .viewer__playback-state {
+    /* One number drives the whole assembly. Declared here, not on the badge,
+       so the halo (which lives outside the badge) can read it too. */
+    --pbs-size: clamp(4rem, 8vw, 5.4rem);
+    --pbs-rim: rgb(255 255 255 / 22%);
+    --pbs-shade: rgb(2 6 10 / 46%);
+
+    /* The rgb() line in each pair is a legacy fallback (a literal expansion of
+       the token, kept only so an engine without color-mix does not invalidate
+       the whole conic gradient). The color-mix line wins everywhere that
+       matters, so changing --color-accent / --color-focus still propagates. */
+    --pbs-glow-soft: rgb(84 214 160 / 12%);
+    --pbs-glow-soft: color-mix(in oklab, var(--color-accent) 12%, transparent);
+    --pbs-glow: rgb(84 214 160 / 34%);
+    --pbs-glow: color-mix(in oklab, var(--color-accent) 34%, transparent);
+    --pbs-glow-hi: rgb(166 241 207 / 46%);
+    --pbs-glow-hi: color-mix(in oklab, var(--color-focus) 46%, transparent);
+
+    position: absolute;
+    z-index: 4; /* load-bearing: captureFreezeFrame() appends its canvas to the
+                   same parent AFTER this node, and that canvas is z-index 2. */
+    inset: 0;
+    display: grid;
+    place-items: center;
+    color: var(--color-text);
+    pointer-events: none;
+    /* NO opacity here on purpose. An ancestor at opacity < 1 becomes a Backdrop
+       Root, and the glass below would then have nothing to sample — the badge
+       would go flat for the whole fade. visibility costs nothing, is not
+       inherited-through in a way that blocks the flash keyframes, and drops the
+       two backdrop-filter layers entirely while the overlay is idle. */
+    visibility: hidden;
+    transition: visibility 0s linear 240ms;
+  }
+
+  .viewer__playback-state.is-visible {
+    visibility: visible;
+    transition-delay: 0s;
+  }
+
+  .viewer__video-stage:fullscreen .viewer__playback-state {
+    --pbs-size: clamp(4.8rem, 8vw, 6.8rem);
+  }
+
+  .viewer__playback-state-stack {
+    position: relative;
+    display: grid;
+    place-items: center;
+  }
+
+  /* ── 2. Outer frosted aura + rotating accent band ─────────────────────── */
+  /* Painted BEFORE the badge (first child, both at z-index auto), so the badge's
+     backdrop-filter frosts the inner edge of this band. One element, two
+     finishes — that is what makes the puck read as lit rather than decorated. */
+
+  .viewer__playback-state-halo {
+    position: absolute;
+    inset: -17%;
+    border-radius: 50%;
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(0.9);
+    transition:
+      opacity 220ms var(--ease-standard),
+      transform 340ms var(--ease-standard);
+  }
+
+  .viewer__playback-state.is-visible .viewer__playback-state-halo {
+    opacity: 1;
+    transform: none;
+  }
+
+  /* Guarded: with no mask support the band would flood the disc and the frost
+     would have a hard 1px edge, so it renders nothing at all instead of wrong. */
+  .viewer__playback-state-halo::before { content: none; }
+
+  @supports (mask-image: radial-gradient(#000, #000)) or (-webkit-mask-image: radial-gradient(#000, #000)) {
+    .viewer__playback-state-halo {
+      backdrop-filter: blur(6px) saturate(118%) brightness(0.86);
+      -webkit-mask-image: radial-gradient(closest-side, #000 0 56%, rgb(0 0 0 / 55%) 80%, transparent 100%);
+      mask-image: radial-gradient(closest-side, #000 0 56%, rgb(0 0 0 / 55%) 80%, transparent 100%);
+    }
+
+    .viewer__playback-state-halo::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      /* Fades to zero-alpha `transparent`, and the tokenised stops are the only
+         hues — the ramp accent-soft → accent → focus is the colour interest, so
+         no SVG <linearGradient> and therefore no document-unique id anywhere. */
+      background: conic-gradient(
+        from 0deg,
+        transparent 0deg,
+        var(--pbs-glow-soft) 40deg,
+        var(--pbs-glow) 96deg,
+        var(--pbs-glow-hi) 132deg,
+        var(--pbs-glow) 168deg,
+        var(--pbs-glow-soft) 224deg,
+        transparent 300deg,
+        transparent 360deg
+      );
+      /* Band sits at 96%-121% of the badge radius: inner sliver under the glass,
+         outer two-thirds crisp. Do not widen inward or it muddies the arc. */
+      -webkit-mask-image: radial-gradient(closest-side, transparent 0 64%, #000 80%, #000 92%, transparent 100%);
+      mask-image: radial-gradient(closest-side, transparent 0 64%, #000 80%, #000 92%, transparent 100%);
+    }
+  }
+
+  /* ── 3. The glass puck ────────────────────────────────────────────────── */
+
+  .viewer__playback-state-badge {
+    position: relative;
+    display: grid;
+    width: var(--pbs-size);
+    aspect-ratio: 1;
+    place-items: center;
+    border: 1px solid var(--pbs-rim);
+    border-radius: 50%;
+    opacity: 0;
+    background:
+      radial-gradient(112% 112% at 50% 0%, rgb(24 38 50 / 40%) 0%, transparent 58%),
+      radial-gradient(closest-side, rgb(6 12 18 / 44%) 0%, rgb(4 9 14 / 62%) 100%);
+    box-shadow:
+      0 0 0 1px rgb(0 0 0 / 34%),
+      0 1.1rem 2.6rem rgb(0 0 0 / 42%),
+      inset 0 1px 0 rgb(255 255 255 / 26%),
+      inset 0 -0.75rem 1.4rem rgb(0 0 0 / 26%);
+    transform: scale(0.88);
+    transition:
+      opacity 200ms var(--ease-standard),
+      transform 320ms var(--ease-standard);
+    /* brightness() IS the bright-footage contrast strategy: the glass darkens
+       what it samples instead of tinting it, so the mint arc and the white
+       glyphs never wash out over a blown-out daylight frame. Raise 0.64 toward
+       0.5 if the owner still finds it washy — that one value is the control. */
+    backdrop-filter: blur(20px) saturate(155%) brightness(0.64) contrast(1.06);
+  }
+
+  .viewer__playback-state.is-visible .viewer__playback-state-badge {
+    opacity: 1;
+    transform: none;
+  }
+
+  /* Every badge child shares one grid cell — no magic top/left/% offsets. */
+  .viewer__playback-state-badge > * {
+    grid-area: 1 / 1;
+  }
+
+  /* The persistent state gets its own energy signature; the transient flashes
+     stay clean. */
+  .viewer__playback-state.is-loading .viewer__playback-state-badge {
+    box-shadow:
+      0 0 0 1px rgb(0 0 0 / 34%),
+      0 1.1rem 2.6rem rgb(0 0 0 / 42%),
+      0 0 2.2rem var(--pbs-glow),
+      inset 0 1px 0 rgb(255 255 255 / 26%),
+      inset 0 -0.75rem 1.4rem rgb(0 0 0 / 26%);
+  }
+
+  /* ── 4. Baked highlights + travelling specular ────────────────────────── */
+
+  .viewer__playback-state-sheen {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    border-radius: inherit;
+    background:
+      radial-gradient(120% 96% at 26% 4%, rgb(255 255 255 / 24%) 0%, rgb(255 255 255 / 5%) 38%, transparent 66%),
+      radial-gradient(88% 70% at 74% 106%, var(--pbs-glow-soft) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .viewer__playback-state-sheen::after {
+    content: "";
+    position: absolute;
+    top: -25%;
+    bottom: -25%;
+    left: 0;
+    width: 38%;
+    background: linear-gradient(
+      100deg,
+      transparent 0%,
+      rgb(255 255 255 / 10%) 26%,
+      rgb(255 255 255 / 46%) 50%,
+      rgb(255 255 255 / 10%) 74%,
+      transparent 100%
+    );
+    opacity: 0;
+    transform: translate3d(-160%, 0, 0) rotate(9deg);
+  }
+
+  /* ── 5. Loading ring ──────────────────────────────────────────────────── */
+  /* Four coplanar circles at r=18 of a 48 viewBox (75% of the badge radius):
+     a dark carrier that gives the arc its own outline everywhere it travels,
+     a faint white rail that anchors the dial, a wide low-alpha bloom that reads
+     as light spilling off the arc, and the lead arc itself. Centre stays empty
+     — no core orb — so at 64px it reads as a dial, not an eyeball. */
+
+  .viewer__playback-state-ring {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    pointer-events: none;
+  }
+
+  /* Required for the rotations: the origin must be the viewBox centre, not each
+     shape's own box. Declared explicitly — do not delete as "redundant". */
+  .viewer__playback-state-ring :is(g, circle) {
+    transform-box: view-box;
+    transform-origin: 24px 24px;
+  }
+
+  .viewer__playback-state-ring circle {
+    fill: none;
+  }
+
+  /* Self-contrast: a wider dark stroke under the arc, so when backdrop-filter
+     lifts the badge's luminance over a blown-out frame the arc keeps separation. */
+  .viewer__playback-state-track {
+    stroke: var(--pbs-shade);
+    stroke-width: 5.4;
+  }
+
+  .viewer__playback-state-rail {
+    stroke: rgb(255 255 255 / 12%);
+    stroke-width: 3.6;
+  }
+
+  .viewer__playback-state-bloom {
+    stroke: var(--color-accent);
+    stroke-width: 8;
+    stroke-linecap: round;
+    opacity: 0.16;
+  }
+
+  .viewer__playback-state-arc {
+    stroke: var(--color-focus);
+    stroke-width: 3.6;
+    stroke-linecap: round;
+  }
+
+  /* 1.5s spin against a 1.35s dash: the head precesses and the figure does not
+     visibly repeat for ~13s. Do not "tidy" these into one duration. */
+  .viewer__playback-state.is-loading .viewer__playback-state-orbit {
+    animation: viewer-pbs-spin 1.5s linear infinite;
+    will-change: transform;
+  }
+
+  /* Bloom shares the arc's EXACT timing, so it reads as glow, not a second ring. */
+  .viewer__playback-state.is-loading .viewer__playback-state-arc,
+  .viewer__playback-state.is-loading .viewer__playback-state-bloom {
+    animation: viewer-pbs-dash 1.35s ease-in-out infinite;
+  }
+
+  .viewer__playback-state.is-loading .viewer__playback-state-halo::before {
+    animation: viewer-pbs-orbit 5.4s linear infinite;
+    will-change: transform;
+  }
+
+  .viewer__playback-state.is-loading .viewer__playback-state-sheen::after {
+    animation: viewer-pbs-sheen 3.4s cubic-bezier(0.55, 0.05, 0.2, 1) 320ms infinite;
+    will-change: transform, opacity;
+  }
+
+  /* ── 6. Play / pause glyphs ───────────────────────────────────────────── */
+
+  .viewer__playback-state-glyph {
+    position: relative;
+    z-index: 3;
+    width: 54%;
+    height: 54%;
+    color: var(--color-text);
+    pointer-events: none;
+    filter: drop-shadow(0 0.15rem 0.5rem rgb(0 0 0 / 45%));
+  }
+
+  /* Rounded corners with no hand-built arcs: same-colour round-joined stroke
+     painted UNDER the fill. The radius scales with the glyph automatically.
+     Resize by editing the path, never the stroke-width — the stroke also
+     inflates the shape by 1.5 units per edge and would break the optical match
+     against the pause bars (14.8 vs 14.4 units tall). */
+  .viewer__playback-state-tri {
+    fill: currentColor;
+    stroke: currentColor;
+    stroke-width: 3;
+    stroke-linejoin: round;
+    paint-order: stroke;
+  }
+
+  .viewer__playback-state-bar {
+    fill: currentColor;
+    transform-box: fill-box;
+    transform-origin: center;
+  }
+
+  /* ── 7. Flash choreography ────────────────────────────────────────────── */
+  /* 700ms against the 720ms playbackStateTimer in media-viewer.ts — change one
+     and you must change the other. The keyframes carry `visibility` at 0%/99%/
+     100% so a flash is self-sufficient (it un-hides itself inside the hidden
+     shell) AND self-cleaning (it re-hides at the end, dropping the two
+     backdrop-filter layers even if .is-visible lingers). */
+
+  .viewer__playback-state:is(.is-play, .is-pause) .viewer__playback-state-badge {
+    animation: viewer-pbs-flash 700ms both;
+    will-change: transform, opacity;
+  }
+
+  .viewer__playback-state:is(.is-play, .is-pause) .viewer__playback-state-halo {
+    animation: viewer-pbs-shock 700ms cubic-bezier(0.16, 0.8, 0.3, 1) both;
+  }
+
+  .viewer__playback-state:is(.is-play, .is-pause) .viewer__playback-state-sheen::after {
+    animation: viewer-pbs-sheen-flash 660ms cubic-bezier(0.5, 0.05, 0.25, 1) both;
+  }
+
+  /* Directional grammar: clockwise = going forward, counter-clockwise = stopping.
+     The aura sweeps one way for play and the other for pause, and the glyphs
+     settle out of a matching ±10deg. You read the direction, not just the icon. */
+  .viewer__playback-state.is-play .viewer__playback-state-halo::before {
+    animation: viewer-pbs-sweep-cw 700ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
+  }
+
+  .viewer__playback-state.is-pause .viewer__playback-state-halo::before {
+    animation: viewer-pbs-sweep-ccw 700ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
+  }
+
+  .viewer__playback-state-glyph--play {
+    animation: viewer-pbs-glyph-play 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .viewer__playback-state-glyph--pause {
+    animation: viewer-pbs-glyph-pause 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .viewer__playback-state-bar--a {
+    animation: viewer-pbs-bar-a 340ms cubic-bezier(0.16, 1, 0.3, 1) 40ms both;
+  }
+
+  .viewer__playback-state-bar--b {
+    animation: viewer-pbs-bar-b 340ms cubic-bezier(0.16, 1, 0.3, 1) 40ms both;
+  }
+
+  /* ── 8. Keyframes ─────────────────────────────────────────────────────── */
+
+  @keyframes viewer-pbs-spin {
+    to { transform: rotate(1turn); }
+  }
+
+  @keyframes viewer-pbs-orbit {
+    to { transform: rotate(1turn); }
+  }
+
+  /* pathLength="100" on the circles normalises the circumference, so every dash
+     value here is a plain percentage of the ring and stays correct if r changes.
+     -100 === 0, so the loop is seamless. Remove pathLength and this collapses. */
+  @keyframes viewer-pbs-dash {
+    0%   { stroke-dasharray: 3 97;  stroke-dashoffset: 0; }
+    45%  { stroke-dasharray: 58 42; stroke-dashoffset: -10; }
+    100% { stroke-dasharray: 3 97;  stroke-dashoffset: -100; }
+  }
+
+  /* Sweeps for ~2s, then rests ~1.4s. A highlight that never rests reads as a
+     loading skeleton rather than as glass. */
+  @keyframes viewer-pbs-sheen {
+    0%        { opacity: 0;   transform: translate3d(-160%, 0, 0) rotate(9deg); }
+    12%       { opacity: 0.9; }
+    46%       { opacity: 0.9; }
+    58%, 100% { opacity: 0;   transform: translate3d(420%, 0, 0) rotate(9deg); }
+  }
+
+  @keyframes viewer-pbs-sheen-flash {
+    0%   { opacity: 0;    transform: translate3d(-160%, 0, 0) rotate(9deg); }
+    22%  { opacity: 0.95; }
+    70%  { opacity: 0.55; }
+    100% { opacity: 0;    transform: translate3d(420%, 0, 0) rotate(9deg); }
+  }
+
+  /* Per-keyframe easing: snap in, hold, drift out. Exits by GROWING, never by
+     shrinking. Measured in Chrome: op 0 @0ms → 0.93 @60ms → 1 @140ms (scale
+     1.06) → settled @250ms → 0.09 @690ms → hidden @700ms. */
+  @keyframes viewer-pbs-flash {
+    0%   { visibility: visible; opacity: 0; transform: scale(0.56); animation-timing-function: cubic-bezier(0.14, 0.9, 0.28, 1); }
+    20%  { opacity: 1; transform: scale(1.06); animation-timing-function: cubic-bezier(0.32, 0, 0.36, 1); }
+    36%  { opacity: 1; transform: scale(1);    animation-timing-function: linear; }
+    60%  { opacity: 1; transform: scale(1);    animation-timing-function: cubic-bezier(0.4, 0, 0.86, 0.58); }
+    99%  { visibility: visible; }
+    100% { visibility: hidden; opacity: 0; transform: scale(1.44); }
+  }
+
+  @keyframes viewer-pbs-shock {
+    0%   { visibility: visible; opacity: 0;    transform: scale(0.68); }
+    22%  { opacity: 0.95; transform: scale(1); }
+    99%  { visibility: visible; }
+    100% { visibility: hidden; opacity: 0; transform: scale(1.62); }
+  }
+
+  @keyframes viewer-pbs-sweep-cw {
+    from { transform: rotate(-0.14turn); }
+    to   { transform: rotate(0.34turn); }
+  }
+
+  @keyframes viewer-pbs-sweep-ccw {
+    from { transform: rotate(0.14turn); }
+    to   { transform: rotate(-0.34turn); }
+  }
+
+  @keyframes viewer-pbs-glyph-play {
+    0%        { opacity: 0; transform: translateX(-7%) scale(0.66) rotate(-10deg); }
+    26%       { opacity: 1; transform: translateX(1.5%) scale(1.05) rotate(1.5deg); }
+    46%, 100% { opacity: 1; transform: translateX(0) scale(1) rotate(0deg); }
+  }
+
+  @keyframes viewer-pbs-glyph-pause {
+    0%        { opacity: 0; transform: scale(0.66) rotate(10deg); }
+    26%       { opacity: 1; transform: scale(1.04) rotate(-1.5deg); }
+    46%, 100% { opacity: 1; transform: scale(1) rotate(0deg); }
+  }
+
+  @keyframes viewer-pbs-bar-a {
+    from { opacity: 0; transform: translateX(80%) scaleY(0.62); }
+    to   { opacity: 1; transform: translateX(0) scaleY(1); }
+  }
+
+  @keyframes viewer-pbs-bar-b {
+    from { opacity: 0; transform: translateX(-80%) scaleY(0.62); }
+    to   { opacity: 1; transform: translateX(0) scaleY(1); }
+  }
+
+  @keyframes viewer-pbs-calm {
+    0%, 100% { opacity: 0.42; }
+    50%      { opacity: 1; }
+  }
+
+  @keyframes viewer-pbs-calm-flash {
+    0%, 8%   { visibility: visible; opacity: 0; }
+    16%, 68% { opacity: 1; }
+    99%      { visibility: visible; }
+    100%     { visibility: hidden; opacity: 0; }
+  }
+
+  /* ── 9. Reduced motion ────────────────────────────────────────────────── */
+  /* pages.css:389-398 already ships, INSIDE this same @layer pages, a blanket
+       *, *::before, *::after { transition-duration: .01ms !important;
+                                animation-duration: .01ms !important;
+                                animation-iteration-count: 1 !important; }
+     Left alone that does NOT produce a calm fallback — it freezes the spinner on
+     frame one and a buffering video shows a dead green comma. Every rule below
+     is class-level (>= 0,1,0 vs the universal selector's 0,0,0) and !important,
+     so it wins the important-author cascade inside the same layer. This override
+     is load-bearing: strip the !important flags and the loader looks crashed.
+     Verified in Chrome with the global reset forced on — exactly two animations
+     survive in the whole overlay, both opacity-only.
+     Result: loading = a parked 26% arc at 12 o'clock breathing in luminance,
+     nothing rotates/translates/scales; play + pause = a plain cross-fade on the
+     same 700ms budget. For a completely static loader, change the
+     .viewer__playback-state-arc animation below to `none !important`. */
+
+  @media (prefers-reduced-motion: reduce) {
+    .viewer__playback-state {
+      transition: visibility 0s linear 240ms !important;
+    }
+
+    .viewer__playback-state.is-visible {
+      transition-delay: 0s !important;
+    }
+
+    .viewer__playback-state-halo,
+    .viewer__playback-state-halo::before,
+    .viewer__playback-state-badge,
+    .viewer__playback-state-sheen::after,
+    .viewer__playback-state-orbit,
+    .viewer__playback-state-glyph,
+    .viewer__playback-state-bar,
+    .viewer__playback-state-bloom,
+    .viewer__playback-state-arc {
+      animation: none !important;
+      transform: none !important;
+    }
+
+    .viewer__playback-state-badge,
+    .viewer__playback-state-halo {
+      transition: opacity 220ms linear !important;
+    }
+
+    /* The travelling specular is pure motion — it has no static value worth
+       keeping. The baked top-light and accent underglow on the sheen stay. */
+    .viewer__playback-state-sheen::after {
+      opacity: 0 !important;
+    }
+
+    /* Later than the neutralise block at equal specificity, so it wins on
+       source order and parks the arc at 12 o'clock. */
+    .viewer__playback-state-arc,
+    .viewer__playback-state-bloom {
+      stroke-dasharray: 26 74 !important;
+      stroke-dashoffset: -6 !important;
+      transform: rotate(-90deg) !important;
+    }
+
+    /* 0,2,0 — outranks the `animation: none` above. Opacity only, no movement. */
+    .viewer__playback-state.is-loading .viewer__playback-state-arc {
+      animation: viewer-pbs-calm 2.4s ease-in-out infinite !important;
+    }
+
+    .viewer__playback-state:is(.is-play, .is-pause) .viewer__playback-state-badge {
+      animation: viewer-pbs-calm-flash 700ms linear both !important;
+    }
+
+    .viewer__playback-state:is(.is-play, .is-pause) .viewer__playback-state-halo {
+      opacity: 0.5 !important;
+    }
+  }
+
+  .viewer-controls__mute {
+    display: inline-grid;
+    min-width: 2.5rem;
+    place-items: center;
+  }
+
+  .viewer__video-stage:fullscreen .viewer__video-frame {
+    width: 100vw;
+    height: 100dvh;
+    aspect-ratio: auto;
+  }
+
+  .viewer__video-stage:fullscreen .viewer-controls {
+    right: clamp(0.75rem, 2vw, 2rem);
+    bottom: clamp(0.75rem, 2vw, 2rem);
+    left: clamp(0.75rem, 2vw, 2rem);
+    width: auto;
+    border: 1px solid rgb(255 255 255 / 12%);
+    border-radius: var(--radius-lg);
+    background: rgb(4 9 14 / 48%);
+    box-shadow: 0 1rem 3rem rgb(0 0 0 / 30%);
+    backdrop-filter: blur(18px) saturate(135%);
+  }
+
+
+  .account-panel--entries {
+    display: flex;
+    min-width: 0;
+    min-height: 28rem;
+    flex-direction: column;
+  }
+
+  .account-panel__heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    margin-bottom: var(--space-2);
+    flex-wrap: wrap;
+  }
+
+  .account-panel__heading h2 {
+    margin: 0;
+  }
+
+  .account-list__sort {
+    width: auto;
+    max-width: 100%;
+  }
+
+  .account-list--paged {
+    flex: 1 1 auto;
+    align-content: start;
+    align-self: stretch;
+  }
+
+  .account-list__more {
+    align-self: center;
+    margin-top: var(--space-4);
+  }
+
+
+  .admin-settings {
+    display: grid;
+    gap: var(--space-5);
+  }
+
+  .admin-settings__defaults,
+  .admin-settings__permissions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+    gap: var(--space-4);
+  }
+
+  .admin-settings__permissions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  @media (max-width: 74rem) {
+    .admin-settings__permissions {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .admin-permissions {
+    display: grid;
+    min-width: 0;
+    margin: 0;
+    padding: var(--space-4);
+    gap: var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+  }
+
+  .admin-permissions legend {
+    padding-inline: var(--space-2);
+    color: var(--color-text);
+    font-weight: 700;
+  }
+
+  .admin-settings__actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+  }
+
+  /* Desktop-only: below this admin.css collapses the grid to 2/1 columns and
+     an unconditional override here would force ~770px of minimum width. */
+  @media (min-width: 80.0625rem) {
+    .admin-user__controls {
+      grid-template-columns: minmax(12rem, 0.8fr) minmax(12rem, 0.8fr) minmax(24rem, 1.5fr);
+    }
+  }
+
+  .admin-users {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .viewer__video-stage:fullscreen .viewer-controls__fullscreen {
+    display: none !important;
+  }
+
+  @media (max-width: 34rem) {
+    .library-sort {
+      width: 100%;
+    }
+  }
+}

@@ -1,0 +1,11 @@
+[Unit]
+Description=Codzienne sprawdzenie, czy komuś należy się przegląd nowości
+
+[Timer]
+OnCalendar=*-*-* 05:10:00
+RandomizedDelaySec=20m
+Persistent=true
+Unit=tryhackx-media-digest.service
+
+[Install]
+WantedBy=timers.target

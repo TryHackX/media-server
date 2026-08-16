@@ -1,0 +1,100 @@
+# Środowiska i zależności
+.venv/
+venv/
+node_modules/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Prywatna konfiguracja i sekrety — nic z tego nie należy do repozytorium
+config/config.local.toml
+integrations/php/stage/config.local.php
+*.local.toml
+*.local.php
+*.local.json
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+*.pfx
+*.p12
+*.jks
+*.keystore
+secrets.*
+*credentials*
+*.htpasswd
+
+# Dane działającego serwera: cache, dzienniki, kopie, zrzuty bazy
+runtime/
+logs/
+backups/
+*.sql
+!migrations/*.sql
+*.sql.gz
+*.dump
+*.bak
+*.old
+*.orig
+*.rej
+*.tmp
+*~
+
+# Wynik budowania frontu — powstaje z kodu, więc nie jest kodem
+public/assets/build/
+dist/
+build/
+
+# Materiały multimedialne nigdy nie trafiają do repozytorium, nawet przez pomyłkę
+*.mp3
+*.flac
+*.m4a
+*.wav
+*.ogg
+*.opus
+*.mkv
+*.mp4
+*.avi
+*.mov
+*.m2ts
+# .ts celowo NIE jest tu wymienione: w tym repozytorium to TypeScript,
+# a nie strumień MPEG-TS.
+*.srt
+*.ass
+*.sub
+*.idx
+*.torrent
+*.zip
+*.7z
+*.rar
+*.tar
+*.tar.*
+
+# Notatki robocze i instrukcje wdrożeniowe właściciela — przydatne tu,
+# niepotrzebne nikomu, kto sklonuje repozytorium
+docs/GIT.md
+docs/NEXT-SESSION.md
+docs/TESTING.md
+NOTES.md
+TODO.md
+scratch/
+tmp/
+
+# Narzędzia, edytory, system
+.idea/
+.vscode/
+*.code-workspace
+*.swp
+*.swo
+.claude/
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+._*

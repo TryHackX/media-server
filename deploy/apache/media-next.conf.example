@@ -1,0 +1,92 @@
+# PRZYKŁAD — nie włączaj przed utworzeniem prywatnej konfiguracji i smoke testem.
+# Repozytorium powinno leżeć poza DocumentRoot. W WAMP nie wskazuj obecnego
+# C:/wamp64/media-server, dopóki cały projekt nie zostanie przeniesiony.
+#
+# Windows, przykład:
+# Define TRYHACKX_MEDIA_ROOT "C:/ProgramData/TryHackX/media-server"
+# Define TRYHACKX_BRIDGE_CONFIG "C:/ProgramData/TryHackX/config/bridge.local.php"
+# Debian, przykład (docs/INSTALL-DEBIAN.md):
+# Define TRYHACKX_MEDIA_ROOT "/opt/tryhackx-media-server/current"
+# Define TRYHACKX_BRIDGE_CONFIG "/etc/tryhackx-media-server/config.local.toml"
+#
+# Na Debianie plik trafia do /etc/apache2/conf-available/media-next.conf i włącza
+# go `a2enconf media-next`. `current` jest dowiązaniem przełączanym przez
+# scripts/release-debian.sh, więc aktualizacja aplikacji nie dotyka Apache.
+
+RedirectMatch 302 ^/media-next$ /media-next/
+
+# Publiczny profil konta ma własny adres (/media-next/account/ktos/), a to jedna
+# strona z jednym plikiem index.html — bez tej reguły wejście prosto pod taki
+# adres kończy się 404 (nawigacja wewnątrz aplikacji działa i bez niej).
+AliasMatch "^/media-next/account/[^/]+/?$" "${TRYHACKX_MEDIA_ROOT}/public/assets/build/account/index.html"
+Alias "/media-next/" "${TRYHACKX_MEDIA_ROOT}/public/assets/build/"
+Alias "/media-next-api" "${TRYHACKX_MEDIA_ROOT}/integrations/php/stage/bridge.php"
+
+<Directory "${TRYHACKX_MEDIA_ROOT}/public/assets/build">
+    Options -Indexes -ExecCGI -Includes
+    AllowOverride None
+    DirectoryIndex index.html
+    Require all granted
+
+    <FilesMatch "(^\.|\.(map|php|phtml|phar)$)">
+        Require all denied
+    </FilesMatch>
+
+    # Nazwy plików JS/CSS niosą skrót zawartości, więc mogą leżeć w cache
+    # dowolnie długo; HTML wskazuje na te nazwy i musi być sprawdzany przy każdym
+    # wejściu, inaczej po wydaniu przeglądarka dalej ładuje poprzednią wersję.
+    <FilesMatch "\.html$">
+        Header always set Cache-Control "no-cache"
+    </FilesMatch>
+
+    <FilesMatch "\.(js|css|woff2?|png|jpg|jpeg|svg|webp)$">
+        Header always set Cache-Control "public, max-age=31536000, immutable"
+    </FilesMatch>
+
+    # Aplikacja instalowalna (PWA). Manifest musi mieć własny typ MIME, bo
+    # nagłówek nosniff nie pozwala przeglądarce go zgadnąć.
+    AddType application/manifest+json .webmanifest
+
+    # Service worker jest wyjątkiem od reguły powyżej: jego nazwa się nie zmienia,
+    # więc roczny cache zamroziłby wersję, która zna nieistniejące już paczki.
+    <Files "sw.js">
+        Header always set Cache-Control "no-cache"
+    </Files>
+</Directory>
+
+<Directory "${TRYHACKX_MEDIA_ROOT}/integrations/php/stage">
+    Options -Indexes -Includes
+    AllowOverride None
+    Require all denied
+
+    <Files "bridge.php">
+        AcceptPathInfo Off
+        Require all granted
+    </Files>
+</Directory>
+
+SetEnv TRYHACKX_BRIDGE_CONFIG "${TRYHACKX_BRIDGE_CONFIG}"
+
+<LocationMatch "^/media-next(?:/|$)">
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "DENY"
+    Header always set Referrer-Policy "no-referrer"
+    Header always set Permissions-Policy "camera=(), microphone=(), geolocation=()"
+    Header always set Content-Security-Policy "default-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'; object-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:"
+</LocationMatch>
+
+# Strona logowania jako jedyna dociąga skrypt dostawcy CAPTCHA wybranego w panelu
+# (reCAPTCHA / hCaptcha / Turnstile), więc tylko tu polityka dopuszcza te źródła.
+# Bez tego bloku włączenie CAPTCHA w panelu blokuje logowanie wszystkim.
+<LocationMatch "^/media-next/login(?:/|$)">
+    Header always set Content-Security-Policy "default-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'; object-src 'none'; script-src 'self' https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/ https://hcaptcha.com https://*.hcaptcha.com https://challenges.cloudflare.com; style-src 'self' https://hcaptcha.com https://*.hcaptcha.com; connect-src 'self' https://hcaptcha.com https://*.hcaptcha.com; frame-src https://www.google.com/recaptcha/ https://recaptcha.google.com/recaptcha/ https://hcaptcha.com https://*.hcaptcha.com https://challenges.cloudflare.com; img-src 'self' data: blob:; media-src 'self' blob:"
+</LocationMatch>
+
+<Location "/media-next-api">
+    Header always set Cache-Control "no-store"
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "DENY"
+</Location>
+
+# Osobny deploy/apache/media-transfer.conf.example dodaje /media-transfer/.
+# Żaden z tych plików nie zwiększa Timeout Apache ani limitu czasu PHP.

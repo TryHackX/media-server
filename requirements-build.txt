@@ -1,0 +1,3 @@
+# Generowane przez scripts/lock-deps.py z [build-system].requires w pyproject.toml.
+# Nie edytuj ręcznie; plik istnieje, aby adnotacje w requirements*.lock miały stałą ścieżkę.
+setuptools>=77

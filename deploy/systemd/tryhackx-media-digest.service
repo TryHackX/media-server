@@ -1,0 +1,40 @@
+[Unit]
+Description=TryHackX Media Server — cotygodniowy przegląd nowości pocztą
+Documentation=file:/opt/tryhackx-media-server/current/docs/INSTALL-DEBIAN.md
+After=network.target mysql.service mariadb.service
+
+[Service]
+Type=oneshot
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/tryhackx-media-server/current
+# Most PHP czyta tę samą konfigurację co usługa — jedno miejsce z poświadczeniami.
+Environment=TRYHACKX_BRIDGE_CONFIG=/etc/tryhackx-media-server/config.local.toml
+ExecStart=/usr/bin/php /opt/tryhackx-media-server/current/integrations/php/stage/digest.php
+
+# Osobna jednostka, a nie druga linia w przebiegu okresowym: zerwane połączenie
+# z Filmwebem nie ma prawa wstrzymać poczty, a poczta nie ma prawa przesłonić
+# błędu skanu. Odstęp tygodniowy pilnuje sam przegląd — w SQL, bo zegary PHP
+# i MySQL chodzą tu w różnych strefach — więc codzienne uruchomienie jest
+# bezpieczne i po prostu zwykle nic nie wysyła.
+TimeoutStartSec=30min
+Nice=10
+
+# Spool poczty leży w logs/mail, czyli w dowiązanym /var/log/tryhackx-media-server.
+LogsDirectory=tryhackx-media-server
+LogsDirectoryMode=0750
+StateDirectory=tryhackx-media-server
+StateDirectoryMode=0750
+
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+UMask=0027
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+LockPersonality=true

@@ -1,0 +1,55 @@
+[Unit]
+Description=TryHackX Media Transfer Service
+Documentation=file:/opt/tryhackx-media-server/current/docs/INSTALL-DEBIAN.md
+After=network.target mysql.service mariadb.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+# Katalog wydania wskazywany przez symlink `current`; scripts/release-debian.sh
+# przełącza go atomowo i dopiero potem restartuje tę jednostkę, więc proces
+# zawsze startuje z jednego, kompletnego drzewa.
+WorkingDirectory=/opt/tryhackx-media-server/current
+Environment=MEDIA_SERVER_CONFIG=/etc/tryhackx-media-server/config.local.toml
+Environment=MEDIA_SERVER_LOG_DIR=/var/log/tryhackx-media-server
+ExecStart=/opt/tryhackx-media-server/current/.venv/bin/python -m media_server serve
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=30
+
+# Stan, który ma przeżyć wydanie: cache miniatur i napisów, cache Filmwebu,
+# dziennik statystyk. Katalog wydania jest tylko do odczytu, a `runtime` w jego
+# środku jest dowiązaniem do tego katalogu — dlatego ścieżki względne z configu
+# (`runtime/thumbnails`) trafiają tutaj, a nie do katalogu wersji, który za
+# tydzień zostanie usunięty. systemd tworzy go z właściwym właścicielem i sam
+# dokłada do ReadWritePaths.
+StateDirectory=tryhackx-media-server
+StateDirectoryMode=0750
+LogsDirectory=tryhackx-media-server
+LogsDirectoryMode=0750
+# Jeśli cache zostały wyprowadzone poza to drzewo opcjami --thumbnail-cache
+# lub --subtitle-cache, wypisz tamte katalogi tutaj:
+# ReadWritePaths=/srv/cache/tryhackx-media-server
+
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+# UWAGA: ProtectHome=true ukrywa /home, /root i /run/user. Biblioteki
+# multimedialne muszą więc leżeć poza /home (instrukcja mówi /srv/media) —
+# inaczej usługa wstaje, ale /health/ready oddaje 503 z listą niedostępnych
+# źródeł, a skrypt wydania słusznie cofa każde wydanie.
+ProtectHome=true
+# Cache miniatur i napisów nie musi być czytelny dla całego systemu.
+UMask=0027
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+LockPersonality=true
+MemoryDenyWriteExecute=true
+
+[Install]
+WantedBy=multi-user.target

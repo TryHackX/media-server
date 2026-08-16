@@ -1,0 +1,897 @@
+@layer pages {
+  .queue-panel__context {
+    max-width: min(32rem, 72vw);
+    margin: .15rem 0 .25rem;
+    overflow: hidden;
+    color: var(--color-accent);
+    font-size: .82rem;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .audio-dock {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: var(--sidebar-width);
+    z-index: 55;
+    display: grid;
+    min-height: 7.25rem;
+    grid-template-columns: minmax(0, 0.8fr) minmax(20rem, 1.35fr) minmax(0, 1fr);
+    align-items: center;
+    gap: var(--space-5);
+    padding: var(--space-4) clamp(var(--space-4), 2vw, var(--space-8));
+    border-top: 1px solid var(--color-border-strong);
+    background: #0b0f148f;
+    box-shadow: 0 -1.25rem 3rem rgb(0 0 0 / 35%);
+    backdrop-filter: blur(1rem);
+  }
+
+  .audio-dock[aria-hidden="true"] {
+    display: none;
+  }
+
+  html.has-audio-player .page-content {
+    padding-bottom: 10rem;
+  }
+
+  .audio-dock__track,
+  .audio-dock__right,
+  .audio-dock__controls,
+  .audio-dock__timeline,
+  .audio-dock__extras {
+    display: flex;
+    align-items: center;
+  }
+
+  .audio-dock__track {
+    min-width: 0;
+    gap: var(--space-3);
+  }
+
+  .audio-dock__track > .icon {
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: var(--radius-md);
+    background: var(--color-accent-soft);
+    color: var(--color-accent);
+  }
+
+  .audio-dock__track > div {
+    min-width: 0;
+  }
+
+  .audio-dock__title,
+  .audio-dock__subtitle,
+  .audio-dock__technical {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .audio-dock__subtitle {
+    color: var(--color-text-muted);
+    font-size: 0.78rem;
+  }
+
+  .audio-dock__technical {
+    max-width: 100%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    margin-top: 0.15rem;
+    color: var(--color-text-subtle);
+    cursor: pointer;
+    font-size: 0.68rem;
+    letter-spacing: 0.015em;
+    text-align: left;
+    opacity: 1;
+    transform: translateY(0);
+    transition: opacity 140ms ease, transform 140ms ease, color 160ms ease;
+  }
+
+  .audio-dock__technical:hover {
+    color: var(--color-text-muted);
+  }
+
+  .audio-dock__technical.is-switching {
+    opacity: 0;
+    transform: translateY(0.2rem);
+  }
+
+  .audio-dock__center {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .audio-dock__controls {
+    justify-content: center;
+    gap: var(--space-2);
+  }
+
+  .audio-dock__timeline {
+    gap: var(--space-3);
+  }
+
+  .audio-dock__progress {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .audio-dock__time {
+    min-width: 6.5rem;
+    color: var(--color-text-muted);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    text-align: right;
+  }
+
+  .audio-dock__right {
+    min-width: 0;
+    justify-content: flex-end;
+    gap: var(--space-2);
+  }
+
+  .audio-dock__volume {
+    width: min(7rem, 7vw);
+  }
+
+  .audio-dock__extras {
+    gap: 0.15rem;
+  }
+
+  .player-control {
+    position: relative;
+    display: grid;
+    width: 2.35rem;
+    height: 2.35rem;
+    flex: 0 0 auto;
+    place-items: center;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--color-text-muted);
+    cursor: pointer;
+  }
+
+  .player-control:hover,
+  .player-control.is-active {
+    background: var(--color-surface-hover);
+    color: var(--color-accent);
+  }
+
+  .player-control[data-badge]:not([data-badge=""])::after {
+    position: absolute;
+    right: -0.2rem;
+    bottom: -0.1rem;
+    display: grid;
+    min-width: 0.95rem;
+    height: 0.95rem;
+    place-items: center;
+    padding-inline: 0.16rem;
+    border: 1px solid var(--color-canvas-raised);
+    border-radius: 999px;
+    background: var(--color-accent);
+    color: #07120e;
+    content: attr(data-badge);
+    font-size: 0.55rem;
+    font-weight: 900;
+    line-height: 1;
+  }
+
+  .player-control--primary {
+    width: 3rem;
+    height: 3rem;
+    background: var(--color-accent);
+    color: #07120e;
+  }
+
+  .now-rating {
+    width: 11rem;
+    min-width: 11rem;
+    flex: 0 0 11rem;
+  }
+
+  .now-rating .rating-picker {
+    gap: var(--space-1);
+    margin-top: 0;
+  }
+
+  .now-rating .rating-picker__label {
+    width: 4.6rem;
+    min-width: 4.6rem;
+    max-width: 4.6rem;
+    flex: 0 0 4.6rem;
+  }
+  .queue-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 54;
+    background: rgb(2 6 10 / 54%);
+    cursor: default;
+  }
+
+  .queue-backdrop[aria-hidden="true"] {
+    display: none;
+  }
+
+  .queue-panel {
+    position: fixed;
+    right: var(--space-5);
+    bottom: 8.5rem;
+    z-index: 57;
+    display: grid;
+    width: min(31rem, calc(100vw - 2 * var(--space-5)));
+    max-height: min(64dvh, 40rem);
+    grid-template-rows: auto minmax(0, 1fr);
+    overflow: hidden;
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-xl);
+    background: var(--color-canvas-raised);
+    box-shadow: var(--shadow-float);
+  }
+
+  .queue-panel[aria-hidden="true"] {
+    display: none;
+  }
+
+  .queue-panel__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-4);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .queue-panel__meta {
+    display: block;
+    margin-top: var(--space-1);
+    color: var(--color-text-muted);
+    font-size: 0.75rem;
+  }
+
+  /* What the account is playing elsewhere. Capped and scrollable on its own, so
+     three devices cannot push the queue itself off the panel. */
+  .queue-devices {
+    max-height: 11rem;
+    padding: var(--space-3) var(--space-4);
+    overflow-y: auto;
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-surface);
+    scrollbar-width: thin;
+  }
+
+  .queue-devices__title {
+    margin-bottom: var(--space-2);
+    color: var(--color-text-subtle);
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .queue-devices__row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-2) 0;
+  }
+
+  .queue-devices__row + .queue-devices__row {
+    border-top: 1px solid var(--color-border);
+  }
+
+  .queue-devices__copy {
+    display: grid;
+    min-width: 0;
+    gap: 0.1rem;
+  }
+
+  .queue-devices__copy > * {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .queue-devices__copy > strong {
+    font-size: 0.82rem;
+  }
+
+  .queue-devices__copy > span {
+    color: var(--color-text-muted);
+    font-size: 0.78rem;
+  }
+
+  .queue-devices__copy > small {
+    color: var(--color-text-subtle);
+    font-size: 0.68rem;
+  }
+
+  .queue-devices__row.is-playing .queue-devices__copy > small {
+    color: var(--color-accent);
+  }
+
+  .queue-devices__take {
+    flex: 0 0 auto;
+    padding: 0.35rem 0.7rem;
+    font-size: 0.78rem;
+  }
+
+  .queue-panel__shuffle-toggle {
+    display: block;
+    margin-top: var(--space-2);
+    padding: 0.3rem 0.55rem;
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    background: var(--color-surface);
+    color: var(--color-text-muted);
+    cursor: pointer;
+    font-size: 0.68rem;
+    text-align: left;
+  }
+
+  .queue-panel__shuffle-toggle[aria-pressed="true"] {
+    border-color: var(--color-accent-strong);
+    background: var(--color-accent-soft);
+    color: var(--color-accent);
+  }
+
+  .queue-window-sentinel {
+    width: 100%;
+    min-height: 2.75rem;
+    padding: var(--space-2) var(--space-4);
+    background: var(--color-canvas-raised);
+    color: var(--color-info);
+    cursor: pointer;
+    font-size: 0.78rem;
+    font-weight: 700;
+  }
+
+  .queue-window-sentinel:hover,
+  .queue-window-sentinel:focus-visible {
+    background: var(--color-surface-hover);
+    color: var(--color-text);
+  }
+  .queue-panel__list {
+    overflow-y: auto;
+  }
+
+  .queue-item {
+    display: grid;
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    border-bottom: 1px solid var(--color-border);
+    background: transparent;
+    color: var(--color-text-muted);
+    text-align: left;
+  }
+
+  .queue-item__main {
+    display: grid;
+    min-width: 0;
+    /* The index column sizes to its content: a five-digit position in a library of
+       tens of thousands used to run into the title at a fixed 2rem. */
+    grid-template-columns: minmax(1.75rem, max-content) minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    text-align: left;
+  }
+
+  /* Without the index the row is just title + meta. */
+  .queue-item__main:not(:has(.queue-item__index)) {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .queue-item__index {
+    color: var(--color-text-muted);
+    font-size: 0.85rem;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  /* The heart, the star and the number say one thing about the track, so they sit
+     together as a cluster; the duration is a separate fact and keeps the wider
+     gap. Spacing them all equally pushed the cluster left and ate title width. */
+  .queue-item__meta {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.22rem;
+    color: var(--color-text-muted);
+    font-size: 0.85rem;
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+
+  .queue-item__favorite,
+  .queue-item__rating {
+    display: inline-flex;
+    align-items: center;
+    height: 1.2em;
+  }
+
+  /* Font Awesome sits a glyph higher above its baseline than digits sit above
+     theirs, so icon boxes sharing a centre with the text still read as too high.
+     The shifts below are measured on the rendered page: each baseline is read
+     out of the layout (a zero-sized inline-block sits exactly on one) and
+     compared with the ink extents of the glyph and of the duration. Left alone,
+     the heart's ink runs 3.6px above the digits and stops 0.6px short of their
+     foot; the star 5.6px above and 0.4px below. */
+  .queue-item__favorite .icon__glyph {
+    transform: translateY(0.157em);
+  }
+
+  .queue-item__rating .icon__glyph {
+    transform: translateY(0.194em);
+  }
+
+  .queue-item__favorite {
+    color: var(--color-danger, #f87171);
+  }
+
+  .queue-item__rating {
+    /* A hair of space between the star and the number: they used to touch. */
+    gap: 0.3em;
+    color: var(--color-accent);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* The glyph is wider than the icon box the shared rule gives it (Font Awesome
+     stars are ~1.25em), so it used to spill over the number next to it. Let the
+     box size to the glyph and keep the spacing to the flex gap. */
+  .queue-item__meta .icon {
+    display: inline-flex;
+    width: auto;
+    height: 1.2em;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+  }
+
+  .queue-item__meta .icon__glyph {
+    display: inline-block;
+    width: auto;
+    line-height: 1;
+  }
+
+  .queue-item__duration {
+    display: inline-flex;
+    height: 1.2em;
+    align-items: center;
+    margin-left: 0.2rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .queue-item__collection {
+    margin-right: var(--space-3);
+  }
+
+  .queue-item:hover,
+  .queue-item[aria-current="true"] {
+    background: var(--color-accent-soft);
+    color: var(--color-text);
+  }
+
+  /* Landing flash after a random jump through the whole library. */
+  .queue-item--jumped {
+    animation: queue-item-jumped 1.4s ease-out;
+  }
+
+  @keyframes queue-item-jumped {
+    0% { box-shadow: inset 0 0 0 2px var(--color-accent); background: var(--color-accent); color: var(--color-bg); }
+    60% { box-shadow: inset 0 0 0 2px var(--color-accent); }
+    100% { box-shadow: inset 0 0 0 0 transparent; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .queue-item--jumped { animation: none; }
+  }
+
+  .queue-item__copy,
+  .queue-item__copy strong,
+  .queue-item__copy small {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+
+  /* The line that carries the text sits inside the row's clipping box. Sliding
+     this instead of the box itself is the whole point: moving the box took its
+     own clip window along, so the hidden part of a title never came into view. */
+  .queue-item__line {
+    display: inline-block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: bottom;
+    white-space: nowrap;
+  }
+
+  /* A title too long for the row scrolls its full text while the row is hovered
+     or focused, then returns. The row marks which lines actually overflow
+     (data-overflow), so short titles never move. The pace comes from the distance
+     (--queue-marquee-time), so a long title is not slower, only longer on the way. */
+  .queue-item:hover .queue-item__copy [data-overflow="true"] .queue-item__line,
+  .queue-item__main:focus-visible .queue-item__copy [data-overflow="true"] .queue-item__line {
+    max-width: none;
+    animation: queue-marquee var(--queue-marquee-time, 6s) ease-in-out infinite;
+    text-overflow: clip;
+  }
+
+  @keyframes queue-marquee {
+    0%, 8% { transform: translateX(0); }
+    45%, 55% { transform: translateX(calc(-1 * var(--queue-marquee-shift, 0px))); }
+    92%, 100% { transform: translateX(0); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .queue-item:hover .queue-item__copy [data-overflow="true"] .queue-item__line,
+    .queue-item__main:focus-visible .queue-item__copy [data-overflow="true"] .queue-item__line {
+      max-width: 100%;
+      animation: none;
+      text-overflow: ellipsis;
+    }
+  }
+
+  .visualizer-panel {
+    position: fixed;
+    inset: var(--space-5) var(--space-5) 8.5rem calc(var(--sidebar-width) + var(--space-5));
+    z-index: 52;
+    display: grid;
+    grid-template: 1fr / 1fr;
+    overflow: hidden;
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-xl);
+    background: #05080c;
+    box-shadow: var(--shadow-float);
+  }
+
+  .visualizer-panel[aria-hidden="true"] {
+    display: none;
+  }
+
+  .visualizer-panel:fullscreen {
+    inset: 0;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .visualizer-panel__canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    /* A grid item cannot shrink below its own content by default, and for a
+       canvas that content is its pixel-buffer size. Leaving fullscreen would
+       otherwise keep the row as tall as the buffer the engine allocated for the
+       full screen, pushing the picture down and out of the panel — and because
+       the engine measures the canvas to decide that buffer size, it never
+       recovered on its own. */
+    min-width: 0;
+    min-height: 0;
+  }
+
+  .visualizer-panel__toolbar {
+    position: absolute;
+    top: var(--space-4);
+    right: var(--space-4);
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-2);
+    border-radius: var(--radius-md);
+    background: rgb(11 15 20 / 80%);
+  }
+
+  .visualizer-panel__select {
+    width: min(14rem, 36vw);
+    background: rgb(17 24 32 / 92%);
+  }
+
+  /* Collapse toggle: a small chevron in the dock's top-right corner. It stays out
+     of the way until the dock is touched, hovered or focused, and is a phone-only
+     control unless the operator turned it on for desktop too. */
+  .audio-dock__collapse {
+    position: absolute;
+    top: var(--space-2);
+    right: var(--space-3);
+    z-index: 2;
+    display: none;
+    width: 2rem;
+    height: 1.5rem;
+    padding: 0;
+    place-items: center;
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-sm);
+    background: rgb(17 24 32 / 75%);
+    color: var(--color-text-muted);
+    cursor: pointer;
+    /* A ghost at rest so it never covers the artwork, full strength while the dock
+       is hovered, focused or freshly tapped; the reveal fades out on a timer. */
+    opacity: 0.22;
+    transition: opacity 180ms ease, color 160ms ease, border-color 160ms ease;
+  }
+
+  .audio-dock__collapse:focus-visible,
+  .audio-dock.is-revealing .audio-dock__collapse {
+    opacity: 1;
+  }
+
+  /* Hover only where hovering is a real state. A tap on a touch screen leaves the
+     element "hovered" until something else is touched, which pinned the chevron
+     at full strength — and green — long after it should have faded. */
+  @media (hover: hover) {
+    .audio-dock:hover .audio-dock__collapse {
+      opacity: 1;
+    }
+
+    .audio-dock__collapse:hover {
+      border-color: var(--color-accent);
+      color: var(--color-accent);
+    }
+  }
+
+  .audio-dock.allows-desktop-collapse .audio-dock__collapse {
+    display: grid;
+  }
+
+  /* The chevron floats above the dock, so the track line keeps a lane clear for
+     it; without this a long title runs underneath it on a phone. */
+  .audio-dock.allows-desktop-collapse .audio-dock__track {
+    padding-right: calc(2rem + var(--space-4));
+  }
+
+  .audio-dock__collapse .icon {
+    transform: rotate(90deg);
+    transition: transform 260ms ease;
+  }
+
+  .audio-dock.is-collapsed .audio-dock__collapse .icon {
+    transform: rotate(-90deg);
+  }
+
+  /* Collapsed: one line with artwork, title and transport; everything else folds
+     away. The rows animate rather than disappearing at once. */
+  .audio-dock__center,
+  .audio-dock__right,
+  .audio-dock__track {
+    transition: opacity 220ms ease;
+  }
+
+  /* The timeline stays: knowing where you are in a track is the point of the bar.
+     Only the extras cluster and the rotating technical line fold away. */
+  .audio-dock.is-collapsed .audio-dock__right,
+  .audio-dock.is-collapsed .audio-dock__technical {
+    display: none;
+  }
+
+  .audio-dock.is-collapsed {
+    min-height: 0;
+    padding-top: var(--space-2);
+    padding-bottom: var(--space-2);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .audio-dock,
+    .audio-dock__collapse .icon,
+    .audio-dock__center,
+    .audio-dock__right,
+    .audio-dock__track {
+      transition: none;
+    }
+  }
+
+  @media (max-width: 78rem) {
+    /* Phones always get the toggle; on desktop it depends on the setting above. */
+    .audio-dock .audio-dock__collapse {
+      display: grid;
+    }
+
+    .audio-dock .audio-dock__track {
+      padding-right: calc(2rem + var(--space-4));
+    }
+
+    .audio-dock {
+      grid-template-columns: minmax(13rem, 0.8fr) minmax(20rem, 1.2fr);
+      row-gap: var(--space-2);
+      /* Height changes when the extras row folds away, so animate it. */
+      transition: min-height 260ms ease, padding 260ms ease;
+    }
+
+    /* Keep the extras (visualizer, queue, favourite, download, edit) reachable on
+       narrow screens: the cluster wraps onto its own row, volume slider included. */
+    .audio-dock__right {
+      grid-column: 1 / -1;
+      flex-wrap: nowrap;
+      justify-content: flex-end;
+      gap: var(--space-1);
+    }
+
+    .audio-dock__volume {
+      width: min(6rem, 22vw);
+      flex: 0 1 auto;
+    }
+
+    html.has-audio-player .page-content {
+      padding-bottom: 12.5rem;
+    }
+
+    html.has-audio-player:has(.audio-dock.is-collapsed) .page-content {
+      padding-bottom: 6.5rem;
+    }
+  }
+
+  @media (max-width: 64rem) {
+    .audio-dock {
+      left: 0;
+    }
+
+    .visualizer-panel {
+      left: var(--space-5);
+    }
+  }
+
+  @media (max-width: 46rem) {
+    .audio-dock {
+      min-height: 8.5rem;
+      grid-template-columns: 1fr;
+      gap: var(--space-2);
+      padding: var(--space-3);
+    }
+
+    .audio-dock__track > .icon {
+      width: 2rem;
+      height: 2rem;
+    }
+
+    .audio-dock__right {
+      justify-content: space-between;
+    }
+
+    /* On phones the extras must fit one row: the star picker (also on every card
+       and in the queue) gives way so visualizer, queue, favourite and download stay. */
+    .audio-dock__extras .now-rating {
+      display: none;
+    }
+
+    .audio-dock__volume {
+      width: min(5rem, 20vw);
+    }
+
+    html.has-audio-player .page-content {
+      padding-bottom: 14rem;
+    }
+
+    html.has-audio-player:has(.audio-dock.is-collapsed) .page-content {
+      padding-bottom: 6rem;
+    }
+
+    .queue-panel {
+      right: var(--space-2);
+      bottom: 12.5rem;
+      width: calc(100vw - 2 * var(--space-2));
+    }
+
+    .visualizer-panel {
+      inset: var(--space-2) var(--space-2) 12.5rem;
+    }
+
+    /* Centred so it does not collide with the collapse chevron or the panel edge. */
+    .visualizer-panel__toolbar {
+      top: var(--space-2);
+      right: auto;
+      left: 50%;
+      width: max-content;
+      max-width: calc(100% - 2 * var(--space-3));
+      justify-content: center;
+      transform: translateX(-50%);
+    }
+
+    .visualizer-panel__select {
+      width: min(11rem, 46vw);
+    }
+  }
+}
+
+@layer pages {
+  .audio-dock__artwork {
+    position: relative;
+    display: grid;
+    width: 3.25rem;
+    height: 3.25rem;
+    flex: 0 0 auto;
+    place-items: center;
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-accent-soft);
+    color: var(--color-accent);
+  }
+
+  .audio-dock__artwork > .icon {
+    width: 1.35rem;
+    height: 1.35rem;
+  }
+
+  .audio-dock__artwork-image {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0;
+    transition: opacity var(--duration-normal) var(--ease-standard);
+  }
+
+  .audio-dock__artwork.has-image .audio-dock__artwork-image {
+    opacity: 1;
+  }
+
+  .queue-panel__list {
+    overflow-anchor: none;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+  }
+
+  .queue-item {
+    scroll-margin-block: 4rem;
+  }
+
+  @media (max-width: 46rem) {
+    .audio-dock__artwork {
+      width: 2.4rem;
+      height: 2.4rem;
+    }
+  }
+}
+
+@layer pages {
+  .visualizer-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 51;
+    background: rgb(2 6 10 / 54%);
+    cursor: default;
+  }
+
+  .visualizer-backdrop[aria-hidden="true"] {
+    display: none;
+  }
+
+  .player-control[data-tooltip]::before {
+    position: absolute;
+    right: 50%;
+    bottom: calc(100% + 0.7rem);
+    z-index: 90;
+    width: max-content;
+    max-width: min(20rem, 80vw);
+    padding: 0.5rem 0.7rem;
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-md);
+    background: rgb(17 24 32 / 98%);
+    box-shadow: var(--shadow-float);
+    color: var(--color-text);
+    content: attr(data-tooltip);
+    font-size: 0.72rem;
+    font-weight: 600;
+    line-height: 1.35;
+    opacity: 0;
+    pointer-events: none;
+    text-align: left;
+    transform: translate(50%, 0.35rem);
+    transition: opacity 150ms ease, transform 150ms ease;
+    white-space: normal;
+  }
+
+  .player-control[data-tooltip]:is(:hover, :focus-visible)::before {
+    opacity: 1;
+    transform: translate(50%, 0);
+  }
+}

@@ -1,0 +1,13 @@
+[Unit]
+Description=Codzienny przebieg okresowy TryHackX Media Server
+
+[Timer]
+OnCalendar=*-*-* 04:15:00
+# Rozrzut, żeby przebieg nie startował co do sekundy razem z resztą crona.
+RandomizedDelaySec=15m
+# Maszyna domowa bywa wyłączona w nocy; bez tego przebieg po prostu przepada.
+Persistent=true
+Unit=tryhackx-media-maintenance.service
+
+[Install]
+WantedBy=timers.target

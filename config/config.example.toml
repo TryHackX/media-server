@@ -1,0 +1,68 @@
+[server]
+host = "127.0.0.1"
+port = 8765
+allow_remote_bind = false
+
+[security]
+# Instalator zastępuje tę wartość losowym kluczem AES-256.
+transfer_key = "GENERATE_WITH_INSTALLER"
+max_token_ttl_seconds = 900
+clock_skew_seconds = 30
+max_token_bytes = 65536
+
+[transfer]
+chunk_size_kib = 512
+max_concurrent_transfers = 8
+queue_timeout_seconds = 10
+max_archive_entries = 1000
+
+# Cache miniaturek i napisów trzymaj w drzewie projektu (runtime/ jest ignorowane
+# przez git); instalator podstawia pełne ścieżki automatycznie.
+[thumbnails]
+cache_path = "C:/sciezka/do/media-server/runtime/thumbnails"
+seek_seconds = 120
+
+[stereo]
+ffmpeg_path = "ffmpeg"
+bitrate_kbps = 192
+# Use h264_nvenc on a tested NVIDIA host; libx264 is the portable default.
+video_encoder = "libx264"
+max_concurrent_jobs = 2
+timeout_seconds = 21600
+# Absolute, persistent and private cache for converted WebVTT subtitle tracks.
+subtitle_cache_path = "C:/sciezka/do/media-server/runtime/subtitles"
+# PGS (Blu-ray) and VobSub (DVD) subtitles are pictures, and are rendered to
+# images the player lays over the film. A whole track takes tens of seconds; this
+# is the ceiling for a file that misbehaves.
+# subtitle_render_timeout_seconds = 1800
+
+[database]
+host = "127.0.0.1"
+port = 3306
+name = "media_server"
+user = "media_server"
+# Zamiast wpisywać hasło do pliku można ustawić zmienną MEDIA_SERVER_DB_PASSWORD
+# (Python) — most PHP czyta wyłącznie ten plik, więc w produkcji wpis jest wymagany.
+password = "CHANGE_ME"
+
+# Opcjonalne — czyta tylko most PHP. Bez [mail] hosta wiadomości aktywacyjne trafiają
+# jako pliki .eml do logs/mail/ w drzewie projektu (lub do mail.spool_path).
+# [mail]
+# host = "smtp.example.com"
+# port = 587
+# security = "starttls"   # starttls | tls | none
+# username = "noreply@example.com"
+# password = "CHANGE_ME"
+# from_address = "noreply@example.com"
+# from_name = "TryHackX Media"
+# spool_path = "/var/spool/tryhackx-media"
+
+# Publiczny prefiks aplikacji używany w linkach aktywacyjnych (domyślnie /media-next/).
+# [app]
+# base_url = "/media-next/"
+
+[roots.music]
+path = "E:/Muzyka"
+
+[roots.movies]
+path = "E:/Filmy Video"

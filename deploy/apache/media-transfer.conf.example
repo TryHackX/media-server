@@ -1,0 +1,26 @@
+# Włącz raz: proxy, proxy_http, headers oraz rewrite.
+# Ta trasa nie zmienia globalnych Timeout ani limitów PHP — limit czasu jest
+# ustawiony na samym ProxyPass, więc dotyczy wyłącznie tej ścieżki.
+#
+# `timeout=3600` jest tu obowiązkowe: bez niego film albo ZIP przerywa się po
+# domyślnym Timeout Apache (60 s), bo to jedno długie żądanie, a nie seria
+# krótkich. `nocanon` przekazuje adres bez normalizacji — w ścieżce transferu
+# siedzi token i przepisanie znaków zmieniłoby podpis.
+ProxyPass        /media-transfer/ http://127.0.0.1:8765/ connectiontimeout=5 timeout=3600 retry=0 nocanon
+ProxyPassReverse /media-transfer/ http://127.0.0.1:8765/
+
+<Location /media-transfer/>
+    ProxyPreserveHost Off
+    RequestHeader unset Proxy early
+    Header always set X-Content-Type-Options "nosniff"
+    # Proxied locations do not inherit <Directory> defaults, so state access
+    # control explicitly. Keep loopback-only until the M7 HTTPS/LAN cutover
+    # replaces this with the intended authenticated exposure.
+    Require local
+</Location>
+
+# The health and internal job endpoints must never be reachable through the
+# proxy; only the token-guarded transfer paths are.
+<LocationMatch "^/media-transfer/(health|v1/catalog-scan|v1/subtitle-cache)">
+    Require all denied
+</LocationMatch>

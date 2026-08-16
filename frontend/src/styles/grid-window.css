@@ -1,0 +1,20 @@
+@layer pages {
+  .media-grid__window-control {
+    grid-column: 1 / -1;
+    width: 100%;
+    min-height: 3.25rem;
+    padding: 0.75rem 1rem;
+    border: 1px dashed var(--color-border-strong);
+    border-radius: var(--radius-lg);
+    background: linear-gradient(90deg, transparent, rgb(84 214 160 / 8%), transparent);
+    color: var(--color-text-muted);
+    cursor: pointer;
+    transition: border-color 180ms ease, color 180ms ease, background-color 180ms ease;
+  }
+
+  .media-grid__window-control:is(:hover, :focus-visible) {
+    border-color: var(--color-accent);
+    background-color: rgb(84 214 160 / 7%);
+    color: var(--color-text);
+  }
+}
