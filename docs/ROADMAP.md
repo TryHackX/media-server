@@ -6,14 +6,22 @@ Wyłącznie **otwarte** prace. Co zostało zamknięte i kiedy: `CHANGELOG.md`.
 
 System działa pod `/media-next/`, wyłącznie na localhost, i jest samodzielny: własne logowanie,
 własna baza, cache i FFmpeg w `runtime/`. Kod leży w `C:\wamp64\media-server`, czyli **poza**
-`DocumentRoot`, i jest w gicie (`github.com/TryHackX/media-server`). Migracje: do `038`.
-Jedyna kopia zapasowa: `C:\wamp64\backups\media-server-20260816-pre-debian` (pliki) i
-`…-pre-debian.sql` (baza) — historia kodu jest w gicie, więc starsze kopie nie są już do
-niczego potrzebne.
+`DocumentRoot`, i jest w gicie (`github.com/TryHackX/media-server`, wydanie `v0.1.1`).
+Migracje: do `038`.
 
-Stare katalogi `www/music`, `www/movies` i stare logowanie zostają wyłącznie jako rollback do
-zakończenia M7 — można je już ukryć (`Require all denied` albo przeniesienie poza `DocumentRoot`),
-ale nie usuwać.
+**Starego systemu już nie ma.** Sprawdzone 17.08.2026: `www/movies`, `www/music`, `www/sources`
+i `www/soucres` nie istnieją, w `www` zostały same ikony, żadnego pliku PHP, a w katalogu `alias`
+tylko adminer, phpMyAdmin, phpSysInfo i nasz `media-next-stage.conf`. **Archiwum ZIP nie
+powstało** — katalogi zostały usunięte, nie spakowane. To zamyka punkt „porządki" z M7
+i **jednocześnie kasuje drogę powrotu**: nie ma już do czego wracać, więc M7 nie może obiecywać
+„procedury powrotu do starych tras". Jedyne wycofanie, jakie zostało, to przywrócenie zrzutu SQL
+i starszego wydania kodu z gita.
+
+**Kopie zapasowe — co naprawdę gdzie leży.** GitHub trzyma **wyłącznie kod**; nie ma tam ani bazy,
+ani mediów. Jedyną kopią danych (konta, oceny, kolekcje, kolejki, statystyki) jest
+`C:\wamp64\backups\media-server-20260817-pre-clean-install.sql` obok żywej bazy. Odkąd znikł stary
+system, ten jeden plik jest całą siatką bezpieczeństwa dla danych — warto go odświeżać przed
+każdą serią zmian, tak jak dotąd.
 
 | Etap | Stan |
 |---|---|
@@ -28,18 +36,30 @@ po sobie poprawki, a maszyny wróciły do stanu sprzed testów.
 
 ## M7 — kontrolowany cutover (zaakceptowany przez właściciela)
 
-- świeża kopia SQL i plików aplikacji bez katalogów multimedialnych;
-- **HTTPS przez istniejący VPS-proxy dla `home.tryhackx.org`** (dziś nie działa; operator
-  właściciela blokuje zwykły HTTP): trasy `/media-next/` i `/media-next-api` za proxy, usunięcie
-  `Require local` i wyjątku `TRYHACKX_BRIDGE_ALLOW_HTTP_LOCAL`, ustawienie zaufanego proxy dla
-  adresu klienta (throttling i CAPTCHA liczą po IP);
-- rozcięcie mostu sesji legacy: własna nazwa ciasteczka zamiast współdzielonego `PHPSESSID`.
-  Konta, oceny i ulubione są w bazie i nie są ruszane, a tabela `user_sessions` (migracja 036)
-  pokaże wprost, które sesje po zmianie wypadły;
-- smoke test po przełączeniu i gotowa procedura powrotu do starych tras;
-- **porządki po okresie obserwacji**: `C:\wamp64\www\movies` i `C:\wamp64\www\music` spakować do
-  ZIP na pulpicie **bez podążania za dowiązaniami** (katalogi zawierają dowiązania do dysku `E:`,
-  inaczej archiwum urośnie do terabajtów). Samo drzewo aplikacji jest już poza `www`.
+Stan każdego punktu sprawdzony w kodzie i na dysku 17.08.2026, nie przyjęty na słowo.
+
+- [x] **Świeża kopia SQL i plików** — para `media-server-20260817-pre-clean-install` w
+      `C:\wamp64\backups`, bez katalogów multimedialnych. Uwaga wyżej: GitHub **nie** jest kopią
+      bazy.
+- [x] **Porządki po okresie obserwacji** — zrobione, choć inaczej niż planowano: katalogi
+      usunięte zamiast spakowane. Skutek dla reszty M7 opisany wyżej.
+- [ ] **HTTPS przez istniejący VPS-proxy dla `home.tryhackx.org`** — nietknięte. W działającej
+      konfiguracji (`C:\wamp64\alias\media-next-stage.conf`, identyczna z szablonem w repo) do
+      zdjęcia jest **pięć** wystąpień `Require local` (linie 22, 59, 71, 87, 99) oraz
+      `SetEnv TRYHACKX_BRIDGE_ALLOW_HTTP_LOCAL "1"` (linia 16). Do tego trasy `/media-next/`
+      i `/media-next-api` za proxy i **zaufany proxy dla adresu klienta** — bez tego throttling
+      i CAPTCHA liczyłyby wszystkich jako jeden adres, czyli przestałyby działać.
+- [ ] **Rozcięcie mostu sesji legacy** — **nie jest zrobione**, wbrew wrażeniu. `bridge.php:174`
+      czyta wprawdzie `$config['session']['name']`, ale `BridgeConfigLoader.php:62` wpisuje tam
+      literał `'PHPSESSID'`, więc nazwy nie da się zmienić. Brakuje jednego: odczytu z TOML-a
+      z sensowną wartością domyślną. **Zrobiło się przy tym tańsze** — starej aplikacji już nie
+      ma, więc nie ma z czym współdzielić ciasteczka; koszt to jedna runda wylogowań, a tabela
+      `user_sessions` (migracja 036) pokaże, które sesje wypadły. `LegacySessionBridge` zostaje:
+      mimo nazwy to bieżąca warstwa sesji (CSRF, odciski, wylogowywanie), a nie pomost do
+      czegokolwiek.
+- [ ] **Smoke test po przełączeniu** — do zrobienia **po** cutoverze; testy z 17.08 dotyczyły
+      instalacji i wydania, nie przełączenia tras. Punkt „procedura powrotu do starych tras"
+      **odpada**: nie ma już starych tras.
 
 ## Długi techniczne
 
@@ -114,5 +134,7 @@ po sobie poprawki, a maszyny wróciły do stanu sprzed testów.
 
 ## Poza zakresem
 
-Nie usuwamy `sources`/`soucres`, plików Music/Movies, starego logowania, globalnych limitów PHP
-ani globalnego `Timeout` Apache przed zakończeniem M7.
+Nie ruszamy **globalnych limitów PHP ani globalnego `Timeout` Apache** — limity czasu ustawiamy
+wyłącznie na własnej trasie (`ProxyPass … timeout=3600`), żeby nie zmieniać zachowania reszty
+serwera. To jedyne, co z tej listy zostało: `sources`, `soucres`, `www/music`, `www/movies`
+i stare logowanie zostały usunięte 17.08.2026 i nie ma ich już czym chronić.
