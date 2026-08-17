@@ -13,7 +13,7 @@ Migracje: do `039`.
 |---|---|
 | M1–M5.6 | gotowe |
 | M6 Utwardzenie wydania | gotowe (17.08.2026) |
-| M7 Kontrolowany cutover | **w toku** — zostały dwa punkty |
+| M7 Kontrolowany cutover | **w toku** — został sam cutover i smoke test po nim |
 
 ## M7 — kontrolowany cutover
 
@@ -27,18 +27,24 @@ Stan każdego punktu sprawdzony w kodzie i na dysku, nie przyjęty na słowo.
       a nie współdzielone `PHPSESSID`. Sprawdzone na żywo w nagłówku `Set-Cookie`; kosztowało
       **jedną** sesję, bo tyle było w `user_sessions`. `LegacySessionBridge` zostaje — mimo nazwy
       to bieżąca warstwa sesji (CSRF, odciski, wylogowywanie), a nie pomost do czegokolwiek.
-- [ ] **HTTPS przez istniejący VPS-proxy dla `home.tryhackx.org`** — wymaga infrastruktury
-      właściciela. **Strona kodowa jest gotowa**: `[proxy] trusted` z listą adresów proxy,
-      `TrustedProxy` czyta `X-Forwarded-For` wyłącznie od wypisanego hosta i idzie łańcuchem
-      od prawej, pomijając własne przeskoki. Puste domyślnie, więc do czasu cutoveru nic się
-      nie zmienia. **Zostaje do zrobienia przy samym przełączeniu** (nie wcześniej, bo to
-      otwiera dostęp): zdjęcie **pięciu** wystąpień `Require local`
-      (`C:\wamp64\alias\media-next-stage.conf`, linie 22, 59, 71, 87, 99) i
-      `SetEnv TRYHACKX_BRIDGE_ALLOW_HTTP_LOCAL "1"` (linia 16), przepięcie tras
-      `/media-next/` i `/media-next-api` za proxy oraz wpisanie adresu proxy do `[proxy] trusted`.
-- [ ] **Smoke test po przełączeniu** — do zrobienia **po** cutoverze. Punkt „procedura powrotu
-      do starych tras" odpada: nie ma już starych tras, a jedyne wycofanie to zrzut SQL plus
-      starsze wydanie z gita.
+- [x] **Kod pod wystawienie publiczne** — zrobione 17.08.2026 i opisane w `PUBLIC-EXPOSURE.md`.
+      `[proxy] trusted` włącza naraz rozpoznanie **kto** jest gościem (`X-Forwarded-For`)
+      i **czym** przyszedł (`X-Forwarded-Proto`) — oba wyłącznie od wypisanego hosta, puste
+      domyślnie, więc instalacja wprost (i cudza, z GitHuba) działa bez żadnych sztuczek.
+      `session.require_https` czytane też z TOML-a. Konfiguracje Apache mają wariant lokalny
+      i publiczny, `/media-transfer/` da się otworzyć (inaczej nic nie zagra), a zdrowie
+      i zlecenia zadań są zamknięte osobną regułą. Brakujące `Define` wywalają teraz `configtest`
+      zamiast cicho przechodzić.
+- [ ] **Samo przełączenie na `home.tryhackx.org`** — wymaga infrastruktury właściciela i **nie
+      da się zrobić wcześniej**, bo to jest ten krok, który otwiera dostęp. Do zrobienia razem:
+      zdjęcie **pięciu** `Require local` (`C:\wamp64\alias\media-next-stage.conf`, linie 22, 59,
+      71, 87, 99) i `SetEnv TRYHACKX_BRIDGE_ALLOW_HTTP_LOCAL` (linia 16), otwarcie
+      `/media-transfer/`, wpisanie adresu proxy do `[proxy] trusted`, pełny `[app] base_url`,
+      przekierowanie z portu 80 i HSTS po stronie proxy. Sprawdzone: DNS `home.tryhackx.org`
+      wskazuje na VPS, nie na łącze domowe.
+- [ ] **Smoke test po przełączeniu** — sześć punktów kontrolnych na końcu `PUBLIC-EXPOSURE.md`.
+      Punkt „procedura powrotu do starych tras" odpada: nie ma już starych tras, a jedyne
+      wycofanie to zrzut SQL plus starsze wydanie z gita.
 
 ## Długi techniczne
 
@@ -66,6 +72,11 @@ Stan każdego punktu sprawdzony w kodzie i na dysku, nie przyjęty na słowo.
     pusta. Zostało 138 dzieł w przeglądzie — to praca człowieka, nie maszyny.
 
 ### Do zrobienia, gdy zacznie przeszkadzać
+
+- **Poczta wychodząca przedstawia się nazwą serwera** — `Mailer::heloName()` bierze
+  `SERVER_NAME` na komendę `HELO`. Trafia to do serwera SMTP i nagłówków wiadomości, nie do
+  przeglądarki gościa, ale przy wystawieniu przez proxy warto, żeby dało się to ustawić
+  w konfiguracji zamiast zgadywać z żądania.
 
 - **1468 wierszy z importu legacy czeka na dopasowanie** (`legacy_import_orphans`: 106 ocen
   i 1362 odtworzenia ze starego systemu). Do dopasowania po odciskach, gdy `content_fingerprint`

@@ -2,6 +2,49 @@
 
 Zamknięte etapy i serie zmian; otwarte prace są wyłącznie w `ROADMAP.md`.
 
+## 17.08.2026 (południe) — kod gotowy na świat, a nie tylko na localhost
+
+Bez migracji. Backup ten sam co przy poprzedniej serii.
+
+- **Konto właściciela odblokowane** — nazwa z `tryhackx` na `TryHackX`, nowe hasło (bcrypt,
+  liczone `password_hash()` tej samej aplikacji) i skasowane 7 nieudanych prób logowania, które
+  trzymały blokadę (limit to 5 na 15 minut). Sprawdzone pełną ścieżką po HTTP: `auth_state` →
+  `login` → `auth_state`, a sesja testowa zamknięta po sobie.
+- **Za proxy aplikacja w ogóle by nie ruszyła — i to po cichu.** Proxy kończące TLS rozmawia
+  z serwerem zwykłym HTTP, więc `$_SERVER['HTTPS']` jest puste mimo że gość jest na HTTPS.
+  Wzięte dosłownie daje to dwie złe odpowiedzi naraz: most odrzuca **każde** żądanie jako
+  niezabezpieczone, a ciasteczko sesji traci atrybut `Secure` — czyli przeglądarka wysyłałaby
+  je potem zwykłym HTTP na ten sam host, gdzie po drodze może je przeczytać ktokolwiek.
+- **`X-Forwarded-Proto` liczy się teraz według tej samej reguły co adres klienta**: wyłącznie
+  wtedy, gdy przyniósł go host z `[proxy] trusted`. Przy pustej liście — domyślnie, i tak działa
+  instalacja wprost — nagłówek nie jest w ogóle czytany, więc nikt nie zadeklaruje, że jego
+  zwykłe HTTP jest szyfrowane. `session.require_https` czytane jest też z TOML-a; dotąd było tam
+  przybite na `true`, choć format PHP miał to od dawna konfigurowalne.
+- **`Require local` na `/media-transfer/` odrzuciłoby każde odtworzenie i pobranie.** Biblioteka
+  by się wyświetliła, a nic by nie zagrało — najgorszy rodzaj awarii, bo wygląda jak działająca
+  aplikacja. Trasy transferu mają teraz wariant publiczny i jest to wybór świadomy: chroni je
+  **podpisany token o krótkim czasie życia**, wydawany po sprawdzeniu sesji. Zdrowie usługi
+  i zlecenia zadań są zamykane **osobną regułą**, więc otwarcie transferów nie może ich otworzyć.
+- **Dwa `Define` w przykładzie Apache były zakomentowane, a Apache nie uważa tego za błąd.**
+  Nierozwinięte `${…}` wchodziło do ścieżek jako zwykły tekst, `configtest` mówił „Syntax OK",
+  a każde żądanie kończyło się 404. Teraz `IfDefine` wywala test zdaniem, które mówi, którego
+  `Define` brakuje. Zmierzone: bez nich kod wyjścia 1, z nimi 0.
+- **`[app] base_url` jako ścieżka względna psuje rejestrację.** Dla przeglądarki jest w porządku,
+  ale link aktywacyjny idzie **e-mailem** — w ścieżce względnej nikt nie kliknie, więc nikt nowy
+  nie dokończy zakładania konta. Opisane w przykładzie konfiguracji i w nowym dokumencie.
+- **`docs/PUBLIC-EXPOSURE.md`** — trzy kształty wystawienia (za proxy, wprost, localhost), co
+  każdy wymaga, i co może zdradzić adres serwera. **Domyślnym kształtem repozytorium jest
+  instalacja wprost**: ktoś, kto sklonuje projekt i postawi go na swoim VPS-ie z normalnym
+  certyfikatem, nie musi robić nic z proxy.
+- **Czy adres domowy wycieknie: nie z aplikacji.** Sprawdzone — front używa adresów względnych,
+  linki w poczcie biorą się z `base_url`, nic nie buduje URL-a z `HTTP_HOST` ani `SERVER_ADDR`.
+  `home.tryhackx.org` wskazuje na VPS, a łącze domowe ma inny adres, więc DNS też nie zdradza.
+  Ryzyko leży poza kodem i jest wypisane wprost: proxy musi pośredniczyć (a nie przekierowywać)
+  i przekazywać `Host`, inaczej Apache zbuduje przekierowanie z własnej nazwy.
+- Testy: **13 nowych** dla `TrustedProxy` (osiem na adres klienta, pięć na rozpoznanie protokołu:
+  własne TLS zawsze, nagłówek bez zaufanego proxy ignorowany, zaufane proxy wierzone w obie
+  strony, łańcuch czytany od lewej). Bramka: 8/8, **332 testy**.
+
 ## 17.08.2026 (rano) — rok utworu znowu jest rokiem, sesja przestała być cudza
 
 Migracja **039** (rok w zapisanych tagach). Backup ten sam co przy poprzedniej serii.
