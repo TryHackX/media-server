@@ -19,11 +19,13 @@ use TryHackX\Media\Integration\PermissionGroups;
 use TryHackX\Media\Integration\CaptchaGuard;
 use TryHackX\Media\Integration\CatalogActions;
 use TryHackX\Media\Integration\PlaylistImporter;
+use TryHackX\Media\Integration\TrustedProxy;
 
 require_once __DIR__ . '/../BridgeException.php';
 require_once __DIR__ . '/../LegacyIdentity.php';
 require_once __DIR__ . '/../LegacySessionBridge.php';
 require_once __DIR__ . '/../TransferToken.php';
+require_once __DIR__ . '/../TrustedProxy.php';
 require_once __DIR__ . '/../CatalogTransferGateway.php';
 require_once __DIR__ . '/../LibraryBrowser.php';
 require_once __DIR__ . '/../CatalogActions.php';
@@ -208,7 +210,15 @@ try {
         Mailer::fromConfig($config),
         (string) ($config['app']['base_url'] ?? '/media-next/')
     );
-    $clientAddress = is_string($_SERVER['REMOTE_ADDR'] ?? null) ? $_SERVER['REMOTE_ADDR'] : '';
+    // Throttling i CAPTCHA liczą po adresie, a za proxy REMOTE_ADDR jest adresem
+    // proxy — wszyscy staliby się jednym gościem. Nagłówek jest czytany wyłącznie
+    // wtedy, gdy przyniósł go host wypisany w `[proxy] trusted`; bez tego wpisu
+    // (domyślnie) zostaje dokładnie to, co było.
+    $clientAddress = TrustedProxy::clientAddress(
+        is_string($_SERVER['REMOTE_ADDR'] ?? null) ? $_SERVER['REMOTE_ADDR'] : '',
+        is_string($_SERVER['HTTP_X_FORWARDED_FOR'] ?? null) ? $_SERVER['HTTP_X_FORWARDED_FOR'] : null,
+        is_array($config['proxy']['trusted'] ?? null) ? $config['proxy']['trusted'] : []
+    );
 
     $captcha = new CaptchaGuard($accounts->securitySettings());
 

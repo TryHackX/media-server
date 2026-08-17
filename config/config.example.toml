@@ -61,6 +61,20 @@ password = "CHANGE_ME"
 # [app]
 # base_url = "/media-next/"
 
+# Własna nazwa ciasteczka sesji — czyta tylko most PHP. Domyślnie TRYHACKXSESSID;
+# zmieniaj wyłącznie wtedy, gdy na tym hoście coś innego używa tej samej nazwy.
+# Same litery i cyfry, bo PHP wstawia to wprost do nagłówka Set-Cookie.
+# [session]
+# name = "TRYHACKXSESSID"
+
+# Adresy proxy, którym wolno powiedzieć, kto jest klientem. Puste (domyślnie)
+# znaczy: nagłówek X-Forwarded-For nie jest w ogóle czytany, bo bez proxy przed
+# nami jest on tylko twierdzeniem klienta. Wypełnij dopiero przy wystawieniu
+# przez reverse proxy — inaczej throttling logowania i CAPTCHA policzą wszystkich
+# gości jako jeden adres, czyli przestaną cokolwiek chronić.
+# [proxy]
+# trusted = "203.0.113.10, ::1"
+
 [roots.music]
 path = "E:/Muzyka"
 

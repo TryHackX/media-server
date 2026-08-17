@@ -6,6 +6,11 @@ namespace TryHackX\Media\Integration;
 
 use RuntimeException;
 
+// Ładowane tutaj, a nie w punktach wejścia: konfigurację czyta też digest.php
+// i testy, a klasa, której loader używa, nie może zależeć od tego, czy ktoś
+// pamiętał ją dołączyć.
+require_once __DIR__ . '/TrustedProxy.php';
+
 final class BridgeConfigLoader
 {
     /** @return array<string, array<string, mixed>> */
@@ -77,6 +82,9 @@ final class BridgeConfigLoader
             'app' => [
                 'base_url' => self::optional($toml, 'app', 'base_url'),
             ],
+            'proxy' => [
+                'trusted' => self::optional($toml, 'proxy', 'trusted'),
+            ],
         ]);
     }
 
@@ -99,6 +107,10 @@ final class BridgeConfigLoader
             'name' => self::sessionName($session['name'] ?? null),
             'require_https' => (bool) ($session['require_https'] ?? true),
         ];
+        // Empty by default: without a named proxy in front of us, X-Forwarded-For
+        // is the client's own claim and is never read.
+        $proxy = is_array($config['proxy'] ?? null) ? $config['proxy'] : [];
+        $config['proxy'] = ['trusted' => TrustedProxy::parseList($proxy['trusted'] ?? null)];
         $mailPort = $mail['port'] ?? null;
         $projectRoot = dirname(__DIR__, 2);
         $spoolPath = self::nonEmptyString($mail['spool_path'] ?? null);
