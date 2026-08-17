@@ -27,14 +27,15 @@ Stan każdego punktu sprawdzony w kodzie i na dysku, nie przyjęty na słowo.
       a nie współdzielone `PHPSESSID`. Sprawdzone na żywo w nagłówku `Set-Cookie`; kosztowało
       **jedną** sesję, bo tyle było w `user_sessions`. `LegacySessionBridge` zostaje — mimo nazwy
       to bieżąca warstwa sesji (CSRF, odciski, wylogowywanie), a nie pomost do czegokolwiek.
-- [ ] **HTTPS przez istniejący VPS-proxy dla `home.tryhackx.org`** — nietknięte i wymaga
-      infrastruktury właściciela. W działającej konfiguracji
-      (`C:\wamp64\alias\media-next-stage.conf`, identycznej z szablonem w repo) do zdjęcia jest
-      **pięć** wystąpień `Require local` (linie 22, 59, 71, 87, 99) oraz
-      `SetEnv TRYHACKX_BRIDGE_ALLOW_HTTP_LOCAL "1"` (linia 16). Do dołożenia: trasy
-      `/media-next/` i `/media-next-api` za proxy oraz **zaufany proxy dla adresu klienta** —
-      bez tego throttling i CAPTCHA policzyłyby wszystkich jako jeden adres, czyli przestałyby
-      chronić.
+- [ ] **HTTPS przez istniejący VPS-proxy dla `home.tryhackx.org`** — wymaga infrastruktury
+      właściciela. **Strona kodowa jest gotowa**: `[proxy] trusted` z listą adresów proxy,
+      `TrustedProxy` czyta `X-Forwarded-For` wyłącznie od wypisanego hosta i idzie łańcuchem
+      od prawej, pomijając własne przeskoki. Puste domyślnie, więc do czasu cutoveru nic się
+      nie zmienia. **Zostaje do zrobienia przy samym przełączeniu** (nie wcześniej, bo to
+      otwiera dostęp): zdjęcie **pięciu** wystąpień `Require local`
+      (`C:\wamp64\alias\media-next-stage.conf`, linie 22, 59, 71, 87, 99) i
+      `SetEnv TRYHACKX_BRIDGE_ALLOW_HTTP_LOCAL "1"` (linia 16), przepięcie tras
+      `/media-next/` i `/media-next-api` za proxy oraz wpisanie adresu proxy do `[proxy] trusted`.
 - [ ] **Smoke test po przełączeniu** — do zrobienia **po** cutoverze. Punkt „procedura powrotu
       do starych tras" odpada: nie ma już starych tras, a jedyne wycofanie to zrzut SQL plus
       starsze wydanie z gita.

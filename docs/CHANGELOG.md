@@ -34,16 +34,32 @@ Migracja **039** (rok w zapisanych tagach). Backup ten sam co przy poprzedniej s
 - **Koszt policzony, nie oszacowany**: `user_sessions` miała **jeden** wiersz, więc zmiana
   wylogowała jedną przeglądarkę. Sprawdzone na żywo — most oddaje teraz
   `Set-Cookie: TRYHACKXSESSID=…; HttpOnly; SameSite=Strict`.
+- **Za proxy wszyscy goście byliby jednym adresem.** Throttling logowania i CAPTCHA liczą po
+  adresie, a `REMOTE_ADDR` za reverse proxy jest adresem proxy — obie ochrony przestałyby kogokolwiek
+  odróżniać. Lekarstwem nie jest zaufanie nagłówkowi `X-Forwarded-For`, bo pisze go klient i może
+  w nim napisać cokolwiek. `TrustedProxy` czyta go **wyłącznie** wtedy, gdy przyniósł go host
+  wypisany w `[proxy] trusted`, a potem idzie łańcuchem **od prawej**, pomijając kolejne własne
+  przeskoki, aż do pierwszego adresu, za którym nikt nie ręczy — i to jest gość. Przeskok, którego
+  nie da się odczytać, kończy wędrówkę: wszystko na lewo od niego mogło zostać zmyślone.
+- **Domyślnie bezczynne.** Bez wpisu w `[proxy] trusted` nagłówek nie jest w ogóle czytany, więc
+  ta zmiana nie otwiera niczego przed cutoverem — jest przygotowaniem, nie przełączeniem. Zaufanie
+  to dokładne adresy, nie zakresy: przed domowym serwerem stoi jedno proxy, a arytmetyka masek
+  w obu rodzinach IP to dużo okazji do subtelnej pomyłki dla listy, która nigdy nie urośnie.
 - **Roadmapa przycięta do stanu faktycznego**, bo kilka długów było już spłaconych: Apache
   **podniósł** nową konfigurację aliasu (sprawdzone — `sw.js` oddaje `Cache-Control: no-cache`),
   kolejka metadanych jest **pusta**, a gatunki filmów **zrobione** (1645 dopasowanych, 138 w
   przeglądzie — to praca człowieka). Zaktualizowane liczby tam, gdzie się rozjechały: nieudanych
   zadań metadanych jest 10, nie 5; odcisków brakuje 7706 z 20 323. Nowa świadoma decyzja: rok
   to rok, pełna data z tagu nie jest przechowywana i nie jest to przeoczenie.
-- Testy: **9 nowych** — sześć na zapisywanie roku z każdego kształtu tagu, jaki ta biblioteka
+- **Błąd złapany przez własny test**: loader konfiguracji zaczął wołać klasę, której sam nie
+  ładował — most działał, bo dołącza wszystko, ale `digest.php` z Harmonogramu wywaliłby się na
+  starcie. `require_once` siedzi teraz przy klasie, która go potrzebuje, a nie w punktach wejścia.
+- Testy: **17 nowych** — sześć na zapisywanie roku z każdego kształtu tagu, jaki ta biblioteka
   naprawdę zawiera (plus dwa, w których tag nie jest datą i zostaje nietknięty), jeden na brak
-  tagu, i zaktualizowane oczekiwania mostu co do nazwy ciasteczka w obu formatach konfiguracji.
-  Bramka: 8/8, **319 testów**.
+  tagu, osiem na wyznaczanie adresu klienta (brak proxy, obcy peer, własne przeskoki pomijane od
+  prawej, nieczytelny przeskok ucinający zaufanie, IPv6 porównywane wartością a nie zapisem,
+  nawiasy od proxy) oraz zaktualizowane oczekiwania mostu co do nazwy ciasteczka w obu formatach
+  konfiguracji. Bramka: 8/8, **327 testów**.
 
 ## 17.08.2026 (nad ranem, później) — czysta instalacja na Windows, **koniec M6**, wydanie 0.1.0 i 0.1.1
 
