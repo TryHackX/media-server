@@ -71,3 +71,47 @@ def test_ipv6_is_compared_by_value_not_by_spelling() -> None:
 
 def test_brackets_and_padding_a_proxy_adds_are_stripped() -> None:
     assert _client_address("198.51.100.7", " [2001:db8::5] ", "198.51.100.7") == "2001:db8::5"
+
+
+def _is_https(remote: str, direct: bool, proto: str | None, trusted: str) -> bool:
+    php = shutil.which("php")
+    if php is None:
+        pytest.skip("PHP nie jest dostępne w PATH")
+    body = (
+        f"require {json.dumps(str(PHP_INTEGRATION / 'TrustedProxy.php'))};"
+        "$t = TryHackX\\Media\\Integration\\TrustedProxy::parseList(" + json.dumps(trusted) + ");"
+        "var_export(TryHackX\\Media\\Integration\\TrustedProxy::isHttps("
+        + json.dumps(remote)
+        + ", "
+        + ("true" if direct else "false")
+        + ", "
+        + ("null" if proto is None else json.dumps(proto))
+        + ", $t));"
+    )
+    return subprocess.run([php, "-r", body], capture_output=True, text=True, check=True).stdout == "true"
+
+
+def test_our_own_tls_always_counts() -> None:
+    assert _is_https("203.0.113.9", True, None, "") is True
+
+
+def test_without_a_trusted_proxy_the_header_cannot_claim_tls() -> None:
+    """Otherwise any visitor could assert their plaintext connection is secure,
+    and the session cookie would go out with Secure over plain HTTP."""
+    assert _is_https("203.0.113.9", False, "https", "") is False
+    assert _is_https("203.0.113.9", False, "https", "198.51.100.7") is False
+
+
+def test_a_trusted_proxy_may_report_the_visitor_spoke_https() -> None:
+    assert _is_https("198.51.100.7", False, "https", "198.51.100.7") is True
+    assert _is_https("198.51.100.7", False, "HTTPS", "198.51.100.7") is True
+
+
+def test_a_trusted_proxy_reporting_plain_http_is_believed_too() -> None:
+    assert _is_https("198.51.100.7", False, "http", "198.51.100.7") is False
+    assert _is_https("198.51.100.7", False, None, "198.51.100.7") is False
+
+
+def test_a_chain_is_read_from_the_left_where_the_visitor_is() -> None:
+    # proxy appends, so the first entry is the scheme the browser spoke.
+    assert _is_https("198.51.100.7", False, "https, http", "198.51.100.7") is True

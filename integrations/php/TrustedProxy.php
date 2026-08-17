@@ -77,6 +77,42 @@ final class TrustedProxy
         return $remoteAddress;
     }
 
+    /**
+     * Was the request HTTPS before it reached us?
+     *
+     * A proxy that terminates TLS speaks plain HTTP to the origin, so
+     * `$_SERVER['HTTPS']` is unset here even though the visitor is on HTTPS.
+     * Taken at face value that means two wrong answers at once: the bridge
+     * rejects every request as insecure, and the session cookie loses its
+     * `Secure` attribute — a cookie promised to HTTPS handed out over plain
+     * HTTP. As with the address, the header counts only when the peer that
+     * delivered it is one we named; otherwise the visitor could claim their
+     * own plaintext connection is secure.
+     *
+     * @param list<string> $trusted packed addresses from parseList()
+     */
+    public static function isHttps(
+        string $remoteAddress,
+        bool $directlyHttps,
+        ?string $forwardedProto,
+        array $trusted
+    ): bool {
+        if ($directlyHttps) {
+            return true;
+        }
+        if ($trusted === []) {
+            return false;
+        }
+        $peer = self::normalise($remoteAddress);
+        if ($peer === null || !in_array($peer, $trusted, true)) {
+            return false;
+        }
+        // A chain of proxies may append; the first entry is what the visitor spoke.
+        $first = preg_split('/\s*,\s*/', trim((string) $forwardedProto))[0] ?? '';
+
+        return strtolower(trim($first)) === 'https';
+    }
+
     /** Packed form, so ::1 and 0:0:0:0:0:0:0:1 are the same address. */
     private static function normalise(string $address): ?string
     {

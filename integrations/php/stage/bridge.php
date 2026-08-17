@@ -160,11 +160,20 @@ try {
     }
     $config = BridgeConfigLoader::load($configPath);
 
-    $isHttps = isset($_SERVER['HTTPS']) && strtolower((string) $_SERVER['HTTPS']) !== 'off';
+    $remoteAddress = is_string($_SERVER['REMOTE_ADDR'] ?? null) ? $_SERVER['REMOTE_ADDR'] : '';
+    $trustedProxies = is_array($config['proxy']['trusted'] ?? null) ? $config['proxy']['trusted'] : [];
+    // Proxy kończące TLS rozmawia z nami zwykłym HTTP, więc bez tego most
+    // odrzucałby każde żądanie jako niezabezpieczone, a ciasteczko sesji
+    // traciłoby atrybut Secure. Nagłówek liczy się wyłącznie od hosta z
+    // `[proxy] trusted`; bez wpisu (domyślnie) liczy się tylko własne TLS.
+    $isHttps = TrustedProxy::isHttps(
+        $remoteAddress,
+        isset($_SERVER['HTTPS']) && strtolower((string) $_SERVER['HTTPS']) !== 'off',
+        is_string($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? null) ? $_SERVER['HTTP_X_FORWARDED_PROTO'] : null,
+        $trustedProxies
+    );
     $requiresHttps = ($config['session']['require_https'] ?? true) === true;
-    $remoteAddress = $_SERVER['REMOTE_ADDR'] ?? '';
     $allowsLocalHttp = getenv('TRYHACKX_BRIDGE_ALLOW_HTTP_LOCAL') === '1'
-        && is_string($remoteAddress)
         && in_array($remoteAddress, ['127.0.0.1', '::1'], true);
     if ($requiresHttps && !$isHttps && !$allowsLocalHttp) {
         throw new BridgeRequestException('Ten endpoint wymaga HTTPS.');
@@ -215,9 +224,9 @@ try {
     // wtedy, gdy przyniósł go host wypisany w `[proxy] trusted`; bez tego wpisu
     // (domyślnie) zostaje dokładnie to, co było.
     $clientAddress = TrustedProxy::clientAddress(
-        is_string($_SERVER['REMOTE_ADDR'] ?? null) ? $_SERVER['REMOTE_ADDR'] : '',
+        $remoteAddress,
         is_string($_SERVER['HTTP_X_FORWARDED_FOR'] ?? null) ? $_SERVER['HTTP_X_FORWARDED_FOR'] : null,
-        is_array($config['proxy']['trusted'] ?? null) ? $config['proxy']['trusted'] : []
+        $trustedProxies
     );
 
     $captcha = new CaptchaGuard($accounts->securitySettings());

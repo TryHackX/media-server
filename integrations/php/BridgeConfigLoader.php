@@ -64,10 +64,10 @@ final class BridgeConfigLoader
                 'internal_url' => "http://127.0.0.1:{$serverPort}",
             ],
             'session' => [
-                // Nazwa jest sprawdzana i domyślana w withDefaults(), wspólnie
-                // dla obu formatów konfiguracji.
+                // Nazwa i wymóg HTTPS są sprawdzane i domyślane w withDefaults(),
+                // wspólnie dla obu formatów konfiguracji.
                 'name' => $toml['session']['name'] ?? null,
-                'require_https' => true,
+                'require_https' => $toml['session']['require_https'] ?? null,
             ],
             'mail' => [
                 'host' => self::optional($toml, 'mail', 'host'),
