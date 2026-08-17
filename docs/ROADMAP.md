@@ -56,7 +56,9 @@ Zostały trzy rzeczy, których nie da się sprawdzić z powłoki agenta:
 
 - [ ] **Przeładowanie Apache po poprawce reguły zdrowia** — żywa konfiguracja stagingu jest już
       poprawiona i przechodzi `httpd -t`, ale do przeładowania `/media-transfer/health/ready`
-      nadal odpowiada `200`. Po przeładowaniu ma oddać `403`.
+      nadal odpowiada `200`. Że po przeładowaniu odda `403`, jest **zmierzone**: ten sam plik
+      wciągnięty do osobnego `httpd` na wolnym porcie oddaje `403` na zdrowiu i na
+      `v1/catalog-scan`, przy niezmienionym `403` na trasie transferu i `200` na aplikacji.
 - [ ] **Rejestracja mailem** — link buduje się z `[app] base_url`, które jest pełnym adresem
       publicznym i zgadza się z bazą frontu (`media-server check`: `agree: true`). Samej
       **dostarczalności** nie sprawdzono: wymaga prawdziwej skrzynki, a rejestracja na adres

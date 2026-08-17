@@ -19,6 +19,13 @@ na żywo, przez publiczny adres.
 - **Dotyczyło też tras zlecających zadania**, nie tylko zdrowia: `GET /media-transfer/v1/catalog-scan`
   oddawał `405`, a nie `403` — czyli żądanie **docierało do aplikacji**. Chronił je wyłącznie
   wewnętrzny klucz usługi (stąd `403` na POST), czyli została jedna warstwa z dwóch zamierzonych.
+- **Poprawka sprawdzona na prawdziwej konfiguracji, nie tylko na wzorcu.** Żywa konfiguracja
+  stagingu — sprzed poprawki i po niej — została wciągnięta do osobnego `httpd` na wolnym
+  porcie i odpytana: przed `health=200`, `v1/catalog-scan=405` (żądanie dochodziło do usługi);
+  po `health=403`, `v1/catalog-scan=403`. Trasa transferu w obu wypadkach `403` (token nadal
+  wymagany), a aplikacja `200` — czyli zamknięcie niczego nie psuje. Nic z tego nie chodzi
+  przez Apache w normalnej pracy: most sięga do tras wewnętrznych przez `internal_url`,
+  walidowany jako wyłącznie pętla zwrotna, a front zdrowia nie woła wcale.
 - **Poprawione w obu plikach, które to wystawiają** (`media-transfer.conf.example`
   i `media-next-stage-wamp.conf.example`) oraz w żywej konfiguracji stagingu. Nie było na to
   żadnego testu — `tests/test_apache_examples.py` sprawdza teraz kolejność obu bloków i to,
