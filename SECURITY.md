@@ -40,8 +40,9 @@
   expires. The short TTL bounds the risk; recorded grants are planned before the cutover.
 - Replacing a symlink between validation and open is a local TOCTOU race. Source directories and
   their symlinks must stay under the administrator's control.
-- The session cookie name is still shared with the legacy portal (`PHPSESSID`) during the staging
-  period; splitting it is part of the controlled cutover.
+- The session cookie is the application's own (`TRYHACKXSESSID`, configurable under `[session]`).
+  It used to be the shared `PHPSESSID` of the portal that lived in the same DocumentRoot, so a
+  session here could be handed to — or taken over by — anything else on the host.
 
 ## Reporting
 

@@ -59,7 +59,9 @@ final class BridgeConfigLoader
                 'internal_url' => "http://127.0.0.1:{$serverPort}",
             ],
             'session' => [
-                'name' => 'PHPSESSID',
+                // Nazwa jest sprawdzana i domyślana w withDefaults(), wspólnie
+                // dla obu formatów konfiguracji.
+                'name' => $toml['session']['name'] ?? null,
                 'require_https' => true,
             ],
             'mail' => [
@@ -90,6 +92,13 @@ final class BridgeConfigLoader
     {
         $mail = is_array($config['mail'] ?? null) ? $config['mail'] : [];
         $app = is_array($config['app'] ?? null) ? $config['app'] : [];
+        // Both formats end up here, so the cookie name is validated once and
+        // defaults the same way whichever file the operator chose.
+        $session = is_array($config['session'] ?? null) ? $config['session'] : [];
+        $config['session'] = [
+            'name' => self::sessionName($session['name'] ?? null),
+            'require_https' => (bool) ($session['require_https'] ?? true),
+        ];
         $mailPort = $mail['port'] ?? null;
         $projectRoot = dirname(__DIR__, 2);
         $spoolPath = self::nonEmptyString($mail['spool_path'] ?? null);
@@ -115,6 +124,32 @@ final class BridgeConfigLoader
         ];
 
         return $config;
+    }
+
+    /**
+     * The name of our own session cookie.
+     *
+     * It used to be `PHPSESSID`, shared with the portal that lived in the same
+     * DocumentRoot: one cookie, two applications, and whichever started the
+     * session first decided what the other saw. That portal is gone, so the
+     * sharing has nothing left to justify it — and a cookie of our own means a
+     * session here can never be handed to, or taken over by, anything else that
+     * happens to run on this host.
+     *
+     * Only letters and digits: PHP puts this straight into a Set-Cookie header,
+     * and a name it cannot use turns into a warning at session_name() rather
+     * than an error anybody would notice.
+     */
+    private static function sessionName(mixed $configured): string
+    {
+        $name = self::nonEmptyString(is_string($configured) ? $configured : null) ?? 'TRYHACKXSESSID';
+        if (preg_match('/^[A-Za-z][A-Za-z0-9]{0,63}$/D', $name) !== 1) {
+            throw new RuntimeException(
+                'session.name może zawierać wyłącznie litery i cyfry, zaczynać się od litery i mieć najwyżej 64 znaki.'
+            );
+        }
+
+        return $name;
     }
 
     private static function isAbsolutePath(string $path): bool

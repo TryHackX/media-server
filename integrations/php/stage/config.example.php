@@ -16,8 +16,9 @@ return [
         'internal_url' => 'http://127.0.0.1:8765',
     ],
     'session' => [
-        // Musi odpowiadać nazwie cookie obecnego portalu na czas migracji.
-        'name' => 'PHPSESSID',
+        // Własne ciasteczko, nie współdzielone `PHPSESSID`. Zmieniaj tylko wtedy,
+        // gdy na tym hoście coś innego używa tej samej nazwy; same litery i cyfry.
+        'name' => 'TRYHACKXSESSID',
         // Na localhost można ustawić false. Dla dostępu sieciowego wymagane jest HTTPS.
         'require_https' => true,
     ],

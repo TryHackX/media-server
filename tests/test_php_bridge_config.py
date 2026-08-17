@@ -45,7 +45,9 @@ def test_toml_is_mapped_to_php_bridge_config(tmp_path: Path) -> None:
         "base_url": "/media-transfer",
         "internal_url": "http://127.0.0.1:8765",
     }
-    assert loaded["session"] == {"name": "PHPSESSID", "require_https": True}
+    # Our own cookie, not the PHPSESSID the portal in the same DocumentRoot used
+    # to share: a session here can no longer be handed to anything else on the host.
+    assert loaded["session"] == {"name": "TRYHACKXSESSID", "require_https": True}
 
 
 def _php_parse_toml(source: str) -> subprocess.CompletedProcess[str]:
@@ -146,7 +148,7 @@ def test_optional_sections_share_defaults_across_toml_and_php(tmp_path: Path) ->
         " 'user' => 'media', 'password' => 'secret'], 'transfer' => ['key' => '"
         + "A" * 43
         + "', 'base_url' => '/media-transfer', 'internal_url' => 'http://127.0.0.1:8765'],"
-        " 'session' => ['name' => 'PHPSESSID', 'require_https' => true]];",
+        " 'session' => ['name' => 'TRYHACKXSESSID', 'require_https' => true]];",
         encoding="utf-8",
     )
 
