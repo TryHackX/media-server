@@ -9,7 +9,12 @@ __pycache__/
 .ruff_cache/
 .mypy_cache/
 .coverage
+.coverage.*
+coverage.xml
 htmlcov/
+*.tsbuildinfo
+npm-debug.log*
+yarn-error.log*
 
 # Prywatna konfiguracja i sekrety — nic z tego nie należy do repozytorium
 config/config.local.toml
@@ -31,6 +36,13 @@ secrets.*
 *credentials*
 *.htpasswd
 
+# Prawdziwe konfiguracje serwera. W repozytorium są **wyłącznie** pliki
+# `.example`; działający host wirtualny niesie nazwę serwera, ścieżki
+# certyfikatu i adresy proxy — czyli dokładnie to, czego nie publikujemy.
+# Wzorzec łapie tylko nazwy kończące się na `.conf`, więc `*.conf.example`
+# zostają śledzone.
+deploy/apache/*.conf
+
 # Dane działającego serwera: cache, dzienniki, kopie, zrzuty bazy
 runtime/
 logs/
@@ -45,6 +57,10 @@ backups/
 *.rej
 *.tmp
 *~
+# Ślady po uruchomieniach — dzienniki i identyfikatory procesów potrafią powstać
+# także poza `logs/` (np. przy sprawdzaniu konfiguracji osobnym `httpd`).
+*.log
+*.pid
 
 # Wynik budowania frontu — powstaje z kodu, więc nie jest kodem
 public/assets/build/

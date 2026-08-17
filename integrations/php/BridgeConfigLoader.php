@@ -131,8 +131,12 @@ final class BridgeConfigLoader
             // server is available.
             'spool_path' => $spoolPath ?? $projectRoot . '/logs/mail',
         ];
+        // The root, because that is where the frontend is built to stand unless
+        // somebody asks for a subdirectory (`MEDIA_APP_BASE=/media-next/`). The
+        // default used to be that subdirectory, and an installation that never
+        // set `[app] base_url` sent activation links to a path it does not serve.
         $config['app'] = [
-            'base_url' => self::nonEmptyString($app['base_url'] ?? null) ?? '/media-next/',
+            'base_url' => self::nonEmptyString($app['base_url'] ?? null) ?? '/',
         ];
 
         return $config;

@@ -217,7 +217,7 @@ try {
     $accounts = new AccountGateway(
         $database,
         Mailer::fromConfig($config),
-        (string) ($config['app']['base_url'] ?? '/media-next/')
+        (string) ($config['app']['base_url'] ?? '/')
     );
     // Throttling i CAPTCHA liczą po adresie, a za proxy REMOTE_ADDR jest adresem
     // proxy — wszyscy staliby się jednym gościem. Nagłówek jest czytany wyłącznie
@@ -383,7 +383,7 @@ try {
     $digest = new LibraryDigest(
         $database,
         Mailer::fromConfig($config),
-        (string) ($config['app']['base_url'] ?? '/media-next/')
+        (string) ($config['app']['base_url'] ?? '/')
     );
 
     if ($method === 'GET' && $action === 'browse') {
@@ -741,7 +741,7 @@ try {
         bridgeResponse(201, ['link' => (new GuestLinks($database))->issue(
             $identity,
             $payload,
-            rtrim((string) ($config['app']['base_url'] ?? '/media-next/'), '/')
+            rtrim((string) ($config['app']['base_url'] ?? '/'), '/')
         )]);
     }
     if ($action === 'guest_link_revoke') {

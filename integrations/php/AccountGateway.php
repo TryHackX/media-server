@@ -31,7 +31,7 @@ final class AccountGateway
     public function __construct(
         private readonly PDO $database,
         private readonly Mailer $mailer,
-        private readonly string $baseUrl = '/media-next/'
+        private readonly string $baseUrl = '/'
     ) {
     }
 

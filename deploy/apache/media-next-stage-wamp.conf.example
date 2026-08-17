@@ -1,13 +1,15 @@
-# Wdrożenie dla WAMP — od 17.08.2026 **wystawione publicznie**, a aplikacja stoi
-# pod **głównym adresem** (`/`), nie pod podkatalogiem.
+# Wdrożenie dla WAMP — wariant **za reverse proxy**, z aplikacją pod **głównym
+# adresem** (`/`), nie pod podkatalogiem. Instalacja wprost, bez proxy, ma
+# kompletny przykład hosta w `media-vhost.conf.example`; kształty wystawienia
+# opisuje docs/PUBLIC-EXPOSURE.md.
 # Aktywacja: skopiuj ten plik do C:/wamp64/alias/media-next-stage.conf,
 # sprawdź httpd -t i dopiero potem przeładuj usługę Apache.
 #
-# Ruch z zewnątrz przychodzi przez VPS-proxy (home.tryhackx.org): to ono kończy
-# pierwszy odcinek TLS, podaje `X-Forwarded-For`/`X-Forwarded-Proto` i samo
-# przekierowuje HTTP na HTTPS. Adres proxy musi być wpisany w prywatnej
-# konfiguracji jako `[proxy] trusted` — inaczej limit prób logowania i CAPTCHA
-# widzą wszystkich gości jako jeden adres i przestają cokolwiek chronić.
+# Ruch z zewnątrz przychodzi przez proxy: to ono kończy pierwszy odcinek TLS,
+# podaje `X-Forwarded-For`/`X-Forwarded-Proto` i samo przekierowuje HTTP na
+# HTTPS. Adres proxy musi być wpisany w prywatnej konfiguracji jako
+# `[proxy] trusted` — inaczej limit prób logowania i CAPTCHA widzą wszystkich
+# gości jako jeden adres i przestają cokolwiek chronić.
 #
 # **Aplikacja pod `/` to `DocumentRoot` hostów wirtualnych**, ustawiony
 # w conf/extra/httpd-vhosts.conf — nie da się tego zrobić `Alias "/"`, bo taki
@@ -112,16 +114,22 @@ SetEnv TRYHACKX_BRIDGE_ALLOW_HTTP_LOCAL "1"
 ProxyPass "/media-transfer/" "http://127.0.0.1:8765/" connectiontimeout=3 timeout=3600 nocanon
 ProxyPassReverse "/media-transfer/" "http://127.0.0.1:8765/"
 
-# Zdrowie usługi i zlecanie zadań nie mają prawa być osiągalne z zewnątrz —
-# **osobną regułą**, żeby otwarcie tras transferu nie mogło otworzyć i tych.
-# Trasy transferu chroni podpisany token o krótkim czasie życia, wydawany przez
-# most po sprawdzeniu sesji; te tutaj nie mają czego chronić poza tą regułą.
-<LocationMatch "^/media-transfer/(health|v1/catalog-scan|v1/metadata-worker|v1/subtitle-cache|v1/stats)">
-    Require all denied
-</LocationMatch>
-
 <LocationMatch "^/media-transfer(?:/|$)">
     Require all granted
     Header always set X-Content-Type-Options "nosniff"
     Header always set X-Frame-Options "DENY"
+</LocationMatch>
+
+# Zdrowie usługi i zlecanie zadań nie mają prawa być osiągalne z zewnątrz —
+# **osobną regułą**, żeby otwarcie tras transferu nie mogło otworzyć i tych.
+# Trasy transferu chroni podpisany token o krótkim czasie życia, wydawany przez
+# most po sprawdzeniu sesji; te tutaj nie mają czego chronić poza tą regułą.
+#
+# **Ta reguła musi stać PO otwierającej.** Sekcje `<Location*>` scalają się
+# w kolejności z pliku, a przy domyślnym `AuthMerging Off` późniejsze `Require`
+# **zastępuje** wcześniejsze. Gdy ten blok stał wyżej, `Require all granted`
+# kasowało go i `/media-transfer/health/ready` odpowiadało publicznie — tak
+# właśnie wyszło w smoke teście po cutoverze 17.08.2026 (200 zamiast 403).
+<LocationMatch "^/media-transfer/(health|v1/catalog-scan|v1/metadata-worker|v1/subtitle-cache|v1/stats)">
+    Require all denied
 </LocationMatch>

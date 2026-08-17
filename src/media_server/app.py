@@ -18,6 +18,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from starlette.background import BackgroundTask
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
+from . import __version__
 from .catalog import scan_catalog
 from .config import PROJECT_ROOT, AppConfig, load_config
 from .metadata_worker import run_metadata_worker
@@ -482,7 +483,7 @@ def create_app(config: AppConfig) -> FastAPI:
 
     app = FastAPI(
         title="TryHackX Media Transfer",
-        version="0.1.0",
+        version=__version__,
         docs_url=None,
         redoc_url=None,
         openapi_url=None,

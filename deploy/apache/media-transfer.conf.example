@@ -9,14 +9,6 @@
 ProxyPass        /media-transfer/ http://127.0.0.1:8765/ connectiontimeout=5 timeout=3600 retry=0 nocanon
 ProxyPassReverse /media-transfer/ http://127.0.0.1:8765/
 
-# Zdrowie i zlecenia zadań nie mają prawa być osiągalne z zewnątrz nigdy —
-# niezależnie od tego, jak szeroko otwarta jest reguła niżej. Wewnętrzne trasy
-# usługi chroni dodatkowo klucz, ale zamknięcie ich tutaj znaczy, że nikt spoza
-# tej maszyny nawet nie dowie się, że istnieją.
-<LocationMatch "^/media-transfer/(health|v1/catalog-scan|v1/metadata-worker|v1/subtitle-cache|v1/stats)">
-    Require all denied
-</LocationMatch>
-
 <Location /media-transfer/>
     ProxyPreserveHost Off
     # Nagłówki, którymi klient mógłby udawać, że przyszedł skądinąd. Ustawia je
@@ -35,3 +27,21 @@ ProxyPassReverse /media-transfer/ http://127.0.0.1:8765/
     #     bibliotekę, ale **każde odtworzenie i pobranie dostaje 403**.
     # Require all granted
 </Location>
+
+# Zdrowie i zlecenia zadań nie mają prawa być osiągalne z zewnątrz nigdy —
+# niezależnie od tego, jak szeroko otwarta jest reguła wyżej. Wewnętrzne trasy
+# usługi chroni dodatkowo klucz, ale zamknięcie ich tutaj znaczy, że nikt spoza
+# tej maszyny nawet nie dowie się, że istnieją.
+#
+# **Ten blok musi stać PO `<Location>` wyżej, i to nie jest kwestia stylu.**
+# `<Location>` i `<LocationMatch>` scalają się w kolejności z pliku, a przy
+# domyślnym `AuthMerging Off` reguły `Require` z sekcji późniejszej **zastępują**
+# wcześniejsze, zamiast się z nimi sumować. Gdy ten blok stał wyżej, `Require all
+# granted` z `<Location>` kasowało go w całości i `/media-transfer/health/ready`
+# odpowiadało publicznie — zmierzone 17.08.2026 na osobnym httpd: przy tej
+# kolejności 403, przy odwrotnej 404 (czyli żądanie szło do usługi). Zwykłe trasy
+# transferu działają tak samo w obu układach, więc awaria była całkowicie cicha.
+# Pilnuje tego `tests/test_apache_examples.py`.
+<LocationMatch "^/media-transfer/(health|v1/catalog-scan|v1/metadata-worker|v1/subtitle-cache|v1/stats)">
+    Require all denied
+</LocationMatch>

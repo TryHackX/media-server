@@ -3,9 +3,12 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import re
 import shutil
 import sys
+import tomllib
 from pathlib import Path
+from urllib.parse import urlsplit
 
 import uvicorn
 
@@ -115,6 +118,49 @@ def _ffmpeg_report(config: AppConfig) -> dict[str, str | bool | None]:
     return {"configured": configured, "ffmpeg": resolved, "ffprobe": str(probe) if probe else None}
 
 
+def _normalised_base(value: str) -> str:
+    """The path part of a base, always with one trailing slash: `/`, `/media-next/`."""
+    path = urlsplit(value).path or "/"
+    return path if path.endswith("/") else path + "/"
+
+
+def _app_base_report(config: AppConfig) -> dict[str, str | bool | None]:
+    """
+    Whether the two halves of "where the application lives" still say the same thing.
+
+    The frontend is built with a base (`MEDIA_APP_BASE`, the root unless asked
+    otherwise) and the bridge builds activation, guest and digest links from
+    `[app] base_url`. Nothing connects them, and a disagreement fails in the one
+    place nobody is watching: the link inside an e-mail. The application looks
+    perfect, and a stranger who tries to sign up lands on a 404 — a failure that
+    only shows up as nobody ever registering.
+    """
+    built_page = PROJECT_ROOT / "public" / "assets" / "build" / "index.html"
+    if not built_page.is_file():
+        # No build here — a release that ships prebuilt assets, or a checkout
+        # that has not run one yet. Nothing to compare, nothing to warn about.
+        return {"built": None, "configured": None, "agree": None}
+    match = re.search(r'name="media-app-base"\s+content="([^"]*)"', built_page.read_text(encoding="utf-8"))
+    built = _normalised_base(match.group(1)) if match else None
+
+    configured_raw: str | None = None
+    try:
+        raw = tomllib.loads(config.source_path.read_text(encoding="utf-8"))
+    except (OSError, tomllib.TOMLDecodeError):
+        raw = {}
+    section = raw.get("app")
+    if isinstance(section, dict) and isinstance(section.get("base_url"), str):
+        configured_raw = section["base_url"]
+    # Matches the bridge's own default when the section is absent.
+    configured = _normalised_base(configured_raw or "/")
+
+    return {
+        "built": built,
+        "configured": configured_raw or "/",
+        "agree": None if built is None else built == configured,
+    }
+
+
 def _check(config: AppConfig, with_database: bool) -> int:
     roots = {}
     ready = True
@@ -127,8 +173,15 @@ def _check(config: AppConfig, with_database: bool) -> int:
         check_database(config.database)
         database_status = "ready"
     ffmpeg = _ffmpeg_report(config)
+    app_base = _app_base_report(config)
     print(json.dumps(
-        {"config": str(config.source_path), "roots": roots, "database": database_status, "ffmpeg": ffmpeg},
+        {
+            "config": str(config.source_path),
+            "roots": roots,
+            "database": database_status,
+            "ffmpeg": ffmpeg,
+            "app_base": app_base,
+        },
         indent=2,
     ))
     # A warning, not a failure: a catalogue-only installation is a legitimate
@@ -139,6 +192,13 @@ def _check(config: AppConfig, with_database: bool) -> int:
             "Uwaga: nie znaleziono FFmpeg/ffprobe — bez nich nie ma miniatur, danych o ścieżkach\n"
             "wideo, napisów obrazkowych ani trybu zgodnego. Wskaż je przez stereo.ffmpeg_path\n"
             "albo dopisz do PATH.",
+            file=sys.stderr,
+        )
+    if app_base["agree"] is False:
+        print(
+            f"Uwaga: front zbudowany dla {app_base['built']}, a [app] base_url wskazuje\n"
+            f"{app_base['configured']} — linki aktywacyjne i gościnne prowadzą obok aplikacji.\n"
+            "Zbuduj front z tą samą ścieżką (MEDIA_APP_BASE) albo popraw base_url.",
             file=sys.stderr,
         )
     return 0 if ready else 2

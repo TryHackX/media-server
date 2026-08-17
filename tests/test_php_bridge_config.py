@@ -167,7 +167,10 @@ def test_optional_sections_share_defaults_across_toml_and_php(tmp_path: Path) ->
     # Both formats fall back to the same on-disk spool so activation works without SMTP.
     assert toml_loaded["mail"]["spool_path"] == php_loaded["mail"]["spool_path"]
     assert toml_loaded["mail"]["spool_path"].replace("\\", "/").endswith("/logs/mail")
-    assert toml_loaded["app"] == php_loaded["app"] == {"base_url": "/media-next/"}
+    # The root: where the frontend is built to stand unless somebody asks for a
+    # subdirectory. A default pointing anywhere else sends activation links to a
+    # path the server does not serve.
+    assert toml_loaded["app"] == php_loaded["app"] == {"base_url": "/"}
 
 
 @pytest.mark.parametrize("host", ["127.0.0.1;charset=latin1", "localhost;unix_socket=x"])

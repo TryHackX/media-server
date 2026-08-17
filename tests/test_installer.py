@@ -44,15 +44,22 @@ def test_frontend_build_requires_lockfile(monkeypatch: pytest.MonkeyPatch, tmp_p
         install._build_frontend()
 
 
+def _install_args(**overrides: object) -> argparse.Namespace:
+    defaults: dict[str, object] = {
+        "port": 8765,
+        "db_host": "127.0.0.1",
+        "db_port": 3306,
+        "db_name": "media_server",
+        "db_user": "media_server",
+        "ffmpeg_path": "ffmpeg",
+        "base_url": None,
+        "proxy_trusted": None,
+    }
+    return argparse.Namespace(**{**defaults, **overrides})
+
+
 def test_generated_config_contains_private_thumbnail_cache(tmp_path: Path) -> None:
-    args = argparse.Namespace(
-        port=8765,
-        db_host="127.0.0.1",
-        db_port=3306,
-        db_name="media_server",
-        db_user="media_server",
-        ffmpeg_path="ffmpeg",
-    )
+    args = _install_args()
     config = install._build_config(
         args,
         {"music": tmp_path / "music"},
@@ -71,6 +78,55 @@ def test_generated_config_contains_private_thumbnail_cache(tmp_path: Path) -> No
     assert 'video_encoder = "libx264"' in config
     assert "max_concurrent_jobs = 2" in config
     assert "subtitle_cache_path = " in config
+
+
+def test_a_local_install_gets_a_config_with_nothing_to_explain(tmp_path: Path) -> None:
+    """Both public-facing sections are absent unless asked for: the application
+    stands at the root and nothing sits in front of it."""
+    config = install._build_config(
+        _install_args(), {"music": tmp_path / "music"}, "secret",
+        tmp_path / "thumbnails", tmp_path / "subtitles",
+    )
+
+    assert "[app]" not in config
+    assert "[proxy]" not in config
+
+
+def test_a_public_install_can_be_configured_without_editing_the_file(tmp_path: Path) -> None:
+    """The two values a networked installation must change are the two the
+    generated file never had, so every guide ended with "now open the TOML"."""
+    config = install._build_config(
+        _install_args(base_url="https://example.test/", proxy_trusted="203.0.113.10, 2001:db8::10"),
+        {"music": tmp_path / "music"}, "secret",
+        tmp_path / "thumbnails", tmp_path / "subtitles",
+    )
+
+    assert '[app]\nbase_url = "https://example.test/"' in config
+    assert '[proxy]\ntrusted = "203.0.113.10, 2001:db8::10"' in config
+
+
+@pytest.mark.parametrize("value", ["twoj.host", "ftp://twoj.host/", "media-next/"])
+def test_a_base_url_that_cannot_be_clicked_in_mail_is_refused(value: str) -> None:
+    with pytest.raises(argparse.ArgumentTypeError):
+        install._base_url_argument(value)
+
+
+@pytest.mark.parametrize("value", ["/", "/media-next/", "https://twoj.host/", "http://127.0.0.1/"])
+def test_both_shapes_of_base_url_are_accepted(value: str) -> None:
+    assert install._base_url_argument(value) == value
+
+
+def test_a_mistyped_proxy_address_is_caught_at_install_time() -> None:
+    """The failure it prevents is silent: an address nobody can match means the
+    header is ignored and every visitor arrives wearing the proxy's address."""
+    with pytest.raises(argparse.ArgumentTypeError, match="nie jest adresem IP"):
+        install._proxy_trusted_argument("proxy.example.test")
+    with pytest.raises(argparse.ArgumentTypeError, match="nie jest adresem IP"):
+        install._proxy_trusted_argument("203.0.113.300")
+
+
+def test_proxy_addresses_are_normalised_to_one_comma_separated_list() -> None:
+    assert install._proxy_trusted_argument(" 203.0.113.10 ,2001:db8::10 ") == "203.0.113.10, 2001:db8::10"
 
 
 def test_installer_rejects_config_only_with_frontend_build() -> None:
@@ -141,14 +197,7 @@ def test_generated_config_stores_in_tree_paths_relative_to_project(monkeypatch: 
     project_root = tmp_path / "project"
     project_root.mkdir()
     monkeypatch.setattr(install, "PROJECT_ROOT", project_root)
-    args = argparse.Namespace(
-        port=8765,
-        db_host="127.0.0.1",
-        db_port=3306,
-        db_name="media_server",
-        db_user="media_server",
-        ffmpeg_path=str(project_root / "runtime" / "ffmpeg" / "bin" / "ffmpeg.exe"),
-    )
+    args = _install_args(ffmpeg_path=str(project_root / "runtime" / "ffmpeg" / "bin" / "ffmpeg.exe"))
 
     config = install._build_config(
         args,

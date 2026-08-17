@@ -19,7 +19,9 @@ return [
         // Własne ciasteczko, nie współdzielone `PHPSESSID`. Zmieniaj tylko wtedy,
         // gdy na tym hoście coś innego używa tej samej nazwy; same litery i cyfry.
         'name' => 'TRYHACKXSESSID',
-        // Na localhost można ustawić false. Dla dostępu sieciowego wymagane jest HTTPS.
+        // Wyłączyć wyłącznie w sieci prywatnej bez TLS (patrz docs/PUBLIC-EXPOSURE.md,
+        // kształt D). Przy dostępie z internetu HTTPS jest obowiązkowe: bez niego
+        // hasło i ciasteczko sesji lecą tekstem.
         'require_https' => true,
     ],
     // Bez 'mail.host' wiadomości aktywacyjne trafiają do logs/mail/ jako pliki .eml.
@@ -32,5 +34,8 @@ return [
     //     'from_address' => 'noreply@example.com',
     //     'from_name' => 'TryHackX Media',
     // ],
-    // 'app' => ['base_url' => '/media-next/'],
+    // Publiczny adres aplikacji. Domyślnie '/', czyli katalog główny serwera.
+    // Przy wystawieniu publicznym **musi** to być pełny adres — link aktywacyjny
+    // idzie e-mailem, a w ścieżce względnej nikt nie kliknie.
+    // 'app' => ['base_url' => 'https://twoj.host/'],
 ];

@@ -52,7 +52,7 @@ $database = new PDO(
 $digest = new LibraryDigest(
     $database,
     Mailer::fromConfig($config),
-    (string) ($config['app']['base_url'] ?? '/media-next/')
+    (string) ($config['app']['base_url'] ?? '/')
 );
 
 $force = in_array('--force', $argv ?? [], true);

@@ -2,6 +2,138 @@
 
 Zamknięte etapy i serie zmian; otwarte prace są wyłącznie w `ROADMAP.md`.
 
+## 17.08.2026 (wieczorem) — **cutover wykonany**, i reguła, która nie działała
+
+Bez migracji. Apache przeładowany przez właściciela; smoke test wykonany po raz pierwszy
+na żywo, przez publiczny adres.
+
+- **Zdrowie usługi transferowej było osiągalne z internetu.** `https://…/media-transfer/health/ready`
+  oddawało `200` i `{"status":"ready","unavailable_roots":[]}` zamiast 403. Reguła zamykająca
+  **istniała** i wyglądała poprawnie — stała tylko w złym miejscu. `<Location>` i `<LocationMatch>`
+  scalają się w kolejności z pliku, a przy domyślnym `AuthMerging Off` `Require` z sekcji
+  późniejszej **zastępuje** wcześniejsze, zamiast się z nimi sumować; szeroki `Require all granted`
+  stojący niżej kasował całe zamknięcie. Zmierzone na osobnym `httpd` na wolnym porcie, dwie
+  konfiguracje różniące się **wyłącznie** kolejnością: „deny po grant" → 403, „deny przed grant"
+  → 404, czyli żądanie szło do usługi. Zwykłe trasy transferu odpowiadają w obu układach tak
+  samo, więc awaria była całkowicie cicha, a `configtest` mówił „Syntax OK".
+- **Dotyczyło też tras zlecających zadania**, nie tylko zdrowia: `GET /media-transfer/v1/catalog-scan`
+  oddawał `405`, a nie `403` — czyli żądanie **docierało do aplikacji**. Chronił je wyłącznie
+  wewnętrzny klucz usługi (stąd `403` na POST), czyli została jedna warstwa z dwóch zamierzonych.
+- **Poprawione w obu plikach, które to wystawiają** (`media-transfer.conf.example`
+  i `media-next-stage-wamp.conf.example`) oraz w żywej konfiguracji stagingu. Nie było na to
+  żadnego testu — `tests/test_apache_examples.py` sprawdza teraz kolejność obu bloków i to,
+  czy reguła zamykająca nadal wymienia wszystkie trasy wewnętrzne. Sprawdzone na treści
+  sprzed poprawki: zawodzi tam, gdzie powinien.
+- **Smoke test przez publiczny adres**, na koncie tymczasowym skasowanym po `username`
+  (razem z `auth_attempts`, `user_sessions`, `audit_log`; stan kont przed i po: 3):
+  logowanie po HTTPS, wydanie tokenu transferowego i **odtworzenie zakresu bajtów**
+  (`206`, 2048 B) — czyli punkt „utwór gra, plik się pobiera" przeszedł na żywo.
+  Przekierowanie z `http://` na HTTPS: `301`.
+- **`[proxy] trusted` zweryfikowane różnicowo, a nie na słowo**: dwa nieudane logowania
+  z **różnymi podrobionymi** `X-Forwarded-For` dały **ten sam** `client_hash`, czyli nagłówek
+  od gościa jest ignorowany i limit prób liczy się per prawdziwy adres. Gdyby było odwrotnie,
+  każdy mógłby rozcieńczyć własny limit dowolnym nagłówkiem.
+- **`.gitignore`**: prawdziwe konfiguracje Apache (`deploy/apache/*.conf`, przy zachowaniu
+  śledzenia `*.conf.example`) — działający host niesie nazwę serwera, ścieżki certyfikatu
+  i adresy proxy. Do tego `*.log`, `*.pid`, `*.tsbuildinfo` i ślady po narzędziach.
+- **`docs/PROMPT-NEXT.md` usunięty** — dublował zasady pracy z `NEXT-SESSION.md`,
+  a rozjeżdżał się z nim przy każdym wydaniu. Plik i tak nigdy nie był w repozytorium.
+
+## 17.08.2026 (popołudnie) — przegląd przed wydaniem, **0.2.0**: cztery kształty instalacji
+
+Bez migracji. Kopia plików i SQL: `media-server-20260817-pre-release-audit`.
+Przegląd pod jedno pytanie: czy ktoś obcy postawi to na VPS-ie, na domowym serwerze
+w LAN-ie, na domowym komputerze z przekierowanym portem i za proxy — **idąc wyłącznie
+za instrukcjami z repozytorium**. Cztery rzeczy odpowiadały „nie".
+
+- **Service worker był martwy od przeprowadzki pod `/`.** `sw.js` leży w `public/`,
+  więc nie przechodzi przez żaden krok budowania i miał wpisaną na sztywno bazę
+  `/media-next/`. Każda reguła w nim jest zakotwiczona w tej wartości, więc po
+  przeniesieniu aplikacji pod główny adres worker instalował się, aktywował
+  i **ignorował każde żądanie**: `if (!url.pathname.startsWith(BASE)) return;`.
+  Nic tego nie zgłaszało — powłoka offline po prostu nie istniała, a przeglądarka
+  pokazywała swój własny błąd. Baza bierze się teraz z adresu, spod którego worker
+  został podany (`new URL("./", self.location.href)`), więc działa i pod `/`,
+  i pod podkatalogiem, i nie ma czego trzymać w zgodzie ręcznie. Wersja cache
+  podbita do `shell-v2`, żeby stary, źle zapełniony cache został skasowany przy
+  aktywacji. Test node ładuje worker w atrapie scope'u i sprawdza obie bazy oraz
+  to, czy żądanie spoza aplikacji faktycznie zostaje nietknięte.
+- **`[app] base_url` domyślnie wskazywał `/media-next/`, czyli już nie tam, gdzie stoi
+  aplikacja.** Front buduje się domyślnie pod `/`, a most budował z tej wartości linki
+  aktywacyjne, gościnne i przegląd nowości. Świeża instalacja bez własnego `base_url`
+  wysyłała więc gościa pod adres, którego serwer nie obsługuje — a widać to dopiero
+  wtedy, gdy ktoś nowy nie może dokończyć rejestracji. Domyślna wartość to teraz `/`.
+- **`media-server check` porównuje teraz obie połówki tego ustawienia**: bazę
+  wpisaną w zbudowany `index.html` i `[app] base_url` z konfiguracji. Rozjazd to
+  ostrzeżenie na `stderr`, nie błąd — tak samo jak brakujący FFmpeg. Bez buildu
+  (wydanie z gotowymi zasobami) nie ma czego porównywać i nic się nie wypisuje.
+- **Nie było czego skopiować, żeby serwer w ogóle odpowiedział pod adresem.** Oba
+  pliki w `deploy/apache/` są **fragmentami**: dają aliasy, nagłówki i trasę transferu,
+  ale nie mówią, pod jaką nazwą serwer odpowiada ani gdzie ma `DocumentRoot`.
+  `INSTALL-DEBIAN.md` kazał je włączyć przez `a2enconf` i przeładować Apache — i na
+  tym kończył, więc pod `https://twoj.host/` stała domyślna strona Debiana, a
+  `configtest` mówił „Syntax OK", bo nie miał czego sprawdzić. Doszedł
+  `deploy/apache/media-vhost.conf.example`: kompletny host z `ServerName`,
+  `DocumentRoot`, certyfikatem, HSTS, przekierowaniem z portu 80 i włączeniem obu
+  fragmentów. Sprawdzony `httpd -t` z certyfikatem tymczasowym — „Syntax OK",
+  kod wyjścia 0, razem z oboma fragmentami wciągniętymi **wewnątrz** hosta.
+- **Certyfikat przed włączeniem hosta, nie po** — Apache ze wskazanym, a nieistniejącym
+  `SSLCertificateFile` **nie wstaje**; `configtest` kończy się „does not exist or is empty"
+  i kodem 1 (zmierzone). W instrukcji stoi więc `certbot certonly --webroot` przed
+  `a2ensite`, dopóki port 80 obsługuje jeszcze domyślny host Debiana.
+- **Fragmenty wciąga host, nie `a2enconf`, i to nie jest kwestia gustu**:
+  `conf-enabled` czyta się **przed** `sites-enabled`, więc `Define` postawiony
+  w hoście byłby dla nich za późno i asercja `IfDefine` wywaliłaby test.
+- **Instalator umie wreszcie zapisać to, co i tak trzeba było dopisać ręcznie** —
+  `--base-url` i `--proxy-trusted`. Obie sekcje powstają tylko wtedy, gdy o nie
+  poproszono, więc instalacja lokalna dostaje plik bez ani jednej linii do
+  wyjaśniania. Adresy proxy są sprawdzane na miejscu (`ipaddress`), bo literówka
+  w nich nie odzywa się nigdy: nagłówek jest po prostu ignorowany i wszyscy goście
+  stają się jednym adresem. Nazwy hostów są odrzucane — most porównuje adresy
+  spakowane przez `inet_pton` i nazwy nie dopasowałby nigdy.
+- **`INSTALL-DEBIAN.md` krok 7 napisany od nowa** — host wirtualny, wybór wariantu
+  dostępu w `media-transfer.conf` (zostawiony `Require local` daje bibliotekę, która
+  się wyświetla i niczego nie odtwarza), `a2enmod ssl`, certbot i zdanie o tym, że
+  HTTPS nie jest tu ozdobą, bo most odrzuca logowanie po zwykłym HTTP.
+- **`INSTALL-WINDOWS.md` dostał rozdział o wystawieniu poza tę maszynę** — reguła
+  zapory (Windows domyślnie wpuszcza tylko sieć prywatną), przekierowanie portów,
+  DNS dynamiczny, `win-acme` i `DocumentRoot` w `httpd-vhosts.conf`. Przy okazji
+  poprawiony smoke test, który po przeprowadzce pod `/` nadal odsyłał do
+  `http://127.0.0.1/media-next/`.
+- **`PUBLIC-EXPOSURE.md`: czwarty kształt — tylko sieć prywatna, bez TLS.** Dotąd
+  dokument znał proxy, wystawienie wprost i localhost, a najczęstsza instalacja
+  domowa (telefon w tym samym Wi-Fi, adres `192.168.x.x`) nie miała opisanej drogi
+  i kończyła się aplikacją, która ładuje się i odbija każde kliknięcie. Wyjście —
+  `[session] require_https = false` — jest opisane razem z ceną: hasło i ciasteczko
+  sesji lecą wtedy tekstem po całej sieci lokalnej. Opcja istniała w kodzie od
+  południa, ale nie było jej w przykładzie konfiguracji TOML, więc praktycznie
+  nie istniała.
+- **Instalacja pod podkatalogiem: trzy wartości, nie jedna.** Poza `MEDIA_APP_BASE`
+  trzeba przedrostka w regule `AliasMatch` publicznego profilu i w `[app] base_url`;
+  trasy mostu i transferu zostają na miejscu, bo front zna je z osobnego `meta`.
+  Do tego pułapka zmierzona po drodze: w Git Bashu `MEDIA_APP_BASE=/media-next/`
+  zostaje zamienione na ścieżkę Windows i front buduje się dla
+  `C:/Program Files/Git/media-next/`, bez jednego słowa ostrzeżenia.
+- **Nie było opisane, jak w ogóle wejść do świeżej instalacji.** Nie ma żadnego konta,
+  rejestracja jest domyślnie wyłączona (`registration_enabled = '0'`), a konta nie zakłada
+  żadne polecenie — więc po całej instalacji pod adresem stoi strona logowania bez drogi
+  dalej. Obie instrukcje mają teraz krok „pierwsze konto": otwarcie rejestracji na chwilę,
+  rejestracja, `role = 'super_admin'`, zamknięcie z powrotem. Wszystko DML-em, więc kontem
+  aplikacji. W długach zapisane, że właściwym rozwiązaniem jest polecenie, a nie instrukcja.
+- **Przykład dla WAMP-a przestał opisywać czyjąś jedną instalację** — zniknęła
+  z niego nazwa hosta właściciela; został wariant „za reverse proxy" z odesłaniem
+  do kompletnego hosta dla instalacji wprost.
+- **Numer wydania stał w czterech miejscach i już raz się rozjechał.** `v0.1.1`
+  zostało otagowane i wydane z `pyproject.toml` mówiącym `0.1.1`, podczas gdy
+  `media_server.__version__`, `FastAPI(version=...)` i `frontend/package.json`
+  nadal mówiły `0.1.0` — czyli działająca usługa przez całe to wydanie podawała
+  numer sprzed poprawki. Nic tego nie porównywało, bo żaden kod nie czyta dwóch
+  z tych miejsc naraz. Teraz `app.py` bierze numer z `__version__` zamiast trzymać
+  własny (czwarta kopia była najbardziej niewidoczna ze wszystkich — schemat
+  OpenAPI nie jest serwowany), a `tests/test_version.py` porównuje trzy pozostałe.
+  Sprawdzone na treści z tagu `v0.1.1`: test zawodzi tam, gdzie powinien.
+  Wydanie 0.2.0 jest pierwszym, w którym wszystkie cztery mówią to samo.
+
 ## 17.08.2026 (południe) — kod gotowy na świat, a nie tylko na localhost
 
 Bez migracji. Backup ten sam co przy poprzedniej serii.

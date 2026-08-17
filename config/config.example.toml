@@ -57,18 +57,28 @@ password = "CHANGE_ME"
 # from_name = "TryHackX Media"
 # spool_path = "/var/spool/tryhackx-media"
 
-# Publiczny prefiks aplikacji używany w linkach aktywacyjnych (domyślnie /media-next/).
-# **Przy wystawieniu publicznym musi to być pełny adres.** Domyślna wartość jest
-# ścieżką względną, a link aktywacyjny trafia do wiadomości e-mail — w ścieżce
+# Publiczny adres aplikacji, używany w linkach aktywacyjnych, gościnnych
+# i w przeglądzie nowości. Domyślnie "/" — katalog główny serwera, czyli tam,
+# gdzie front buduje się bez `MEDIA_APP_BASE`.
+# **Przy wystawieniu publicznym musi to być pełny adres.** Sama ścieżka wystarcza
+# przeglądarce, ale link aktywacyjny trafia do wiadomości e-mail — w ścieżce
 # względnej nikt nie kliknie, więc rejestracji nie da się dokończyć.
 # [app]
-# base_url = "https://twoj.host/media-next/"
+# base_url = "https://twoj.host/"
 
 # Własna nazwa ciasteczka sesji — czyta tylko most PHP. Domyślnie TRYHACKXSESSID;
 # zmieniaj wyłącznie wtedy, gdy na tym hoście coś innego używa tej samej nazwy.
 # Same litery i cyfry, bo PHP wstawia to wprost do nagłówka Set-Cookie.
+#
+# `require_https` (domyślnie true) odrzuca logowanie po zwykłym HTTP. Wyłączaj je
+# **wyłącznie** w sieci prywatnej bez TLS — instalacja domowa oglądana z telefonu
+# po adresie 192.168.x.x (kształt D w docs/PUBLIC-EXPOSURE.md). Przy dostępie
+# z internetu zostaw true: bez tego hasło i ciasteczko sesji lecą tekstem.
+# Localhost działa niezależnie od tej opcji, dzięki
+# `SetEnv TRYHACKX_BRIDGE_ALLOW_HTTP_LOCAL "1"` w konfiguracji Apache.
 # [session]
 # name = "TRYHACKXSESSID"
+# require_https = true
 
 # Adresy proxy, którym wolno powiedzieć, kto jest klientem. Puste (domyślnie)
 # znaczy: nagłówek X-Forwarded-For nie jest w ogóle czytany, bo bez proxy przed

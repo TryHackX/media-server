@@ -23,9 +23,22 @@
  *    pass straight through, and the cache never sees a byte of either.
  */
 
-const VERSION = "shell-v1";
+const VERSION = "shell-v2";
 const SHELL_CACHE = `tryhackx-media-${VERSION}`;
-const BASE = "/media-next/";
+
+/*
+ * Where the application lives, taken from where this worker was served.
+ *
+ * This used to be written here by hand, and stopped being true the moment the
+ * application moved from `/media-next/` to the root. Nothing broke loudly:
+ * every rule below is anchored to this value, so a wrong base simply makes the
+ * worker ignore every request there is — an offline shell that installs,
+ * activates and does nothing. `sw.js` is a public asset, so no build step
+ * rewrites it; reading the worker's own URL is the one version that cannot
+ * drift, and it covers a subdirectory install (`MEDIA_APP_BASE=/media-next/`)
+ * without a second variable to keep in step.
+ */
+const BASE = new URL("./", self.location.href).pathname;
 
 /** The pages worth having when there is no network. Everything else is asked for. */
 const SHELL = [

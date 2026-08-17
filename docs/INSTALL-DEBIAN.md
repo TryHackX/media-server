@@ -5,6 +5,12 @@ Ta instrukcja opisuje **środowisko produkcyjne** — z jednym katalogiem na wer
 i dowiązaniem `current`, które przełącza się dopiero po udanym smoke teście.
 Instalacja robocza na własnym koncie (bez systemd, bez `/opt`) to `scripts/install-debian.sh`.
 
+Opisana tu ścieżka prowadzi do serwera **widocznego z sieci** — VPS-a albo
+domowej maszyny z własną nazwą. Kto ma przed sobą reverse proxy, kto chce
+zostać w sieci prywatnej bez TLS i kto stawia to wyłącznie na localhost,
+znajdą różnice w `PUBLIC-EXPOSURE.md`; poza konfiguracją Apache (krok 7)
+i dwoma wpisami w prywatnej konfiguracji reszta jest wspólna.
+
 ## Pakiety
 
 ```bash
@@ -12,8 +18,11 @@ sudo apt update
 sudo apt install python3 python3-venv apache2 libapache2-mod-php \
     php-cli php-mysql php-mbstring php-curl php-xml \
     default-mysql-server default-mysql-client ffmpeg curl rsync
-sudo a2enmod proxy proxy_http headers
+sudo a2enmod proxy proxy_http headers ssl
 ```
+
+`ssl` jest potrzebny każdej instalacji widocznej z sieci — most odrzuca
+logowanie po zwykłym HTTP. Wyłącznie lokalna instalacja może go pominąć.
 
 Trzy rozszerzenia PHP z tej listy są **obowiązkowe, a łatwo je przeoczyć**,
 bo `php -l` przechodzi bez nich: most używa `mb_*` w każdej ścieżce katalogu
@@ -82,10 +91,19 @@ sudo install -d -m 0750 -o root -g www-data /etc/tryhackx-media-server
 cd ~/src/media-server
 sudo MEDIA_SERVER_DB_PASSWORD='silne-osobne-haslo' python3 scripts/install.py --config-only \
     --config /etc/tryhackx-media-server/config.local.toml \
-    --music-root /srv/media/music --movies-root /srv/media/movies
+    --music-root /srv/media/music --movies-root /srv/media/movies \
+    --base-url https://twoj.host/
 sudo chown root:www-data /etc/tryhackx-media-server/config.local.toml
 sudo chmod 0640 /etc/tryhackx-media-server/config.local.toml
 ```
+
+`--base-url` to adres, spod którego aplikacja będzie widoczna, i **jedyna
+wartość, której nie da się zgadnąć z maszyny**: linki aktywacyjne idą e-mailem,
+a w ścieżce względnej nikt nie kliknie, więc bez niego nikt nowy nie dokończy
+rejestracji. Instalacja wyłącznie lokalna może go pominąć. Gdy przed serwerem
+stoi reverse proxy, dochodzi `--proxy-trusted '203.0.113.10, 2001:db8::10'` —
+adresy proxy; bez nich limit prób logowania i CAPTCHA widzą wszystkich gości
+jako jeden adres. Obie wartości można dopisać do konfiguracji później ręcznie.
 
 Instalator zapisuje plik jako `0600` dla roota — bez tych dwóch poleceń usługa
 i most PHP go nie przeczytają. `--config-only` tworzy samą konfigurację (klucz
@@ -181,25 +199,77 @@ i `IOSchedulingClass=idle`, bo gdyby ktoś oglądał film o czwartej rano, ma to
 a nie skan. Nakładania się przebiegów pilnuje systemd: jednostka nie uruchomi się drugi raz obok
 siebie.
 
-**7. Apache.**
+**7. Apache.** Trzy pliki i jedna zasada: fragmenty dają aliasy i trasę
+transferu, a **host wirtualny mówi, pod jaką nazwą serwer odpowiada i gdzie ma
+`DocumentRoot`**. Bez tego drugiego pod `https://twoj.host/` stoi domyślna
+strona Debiana, aplikacja jest nieosiągalna, a `configtest` i tak mówi
+„Syntax OK" — nie ma czego sprawdzić, skoro nikt nie wskazał katalogu.
 
 ```bash
 sudo cp deploy/apache/media-next.conf.example /etc/apache2/conf-available/media-next.conf
 sudo cp deploy/apache/media-transfer.conf.example /etc/apache2/conf-available/media-transfer.conf
-# odkomentuj i ustaw obie linie Define w media-next.conf:
-#   Define TRYHACKX_MEDIA_ROOT "/opt/tryhackx-media-server/current"
-#   Define TRYHACKX_BRIDGE_CONFIG "/etc/tryhackx-media-server/config.local.toml"
-sudo a2enconf media-next media-transfer
+sudo cp deploy/apache/media-vhost.conf.example /etc/apache2/sites-available/tryhackx-media.conf
+```
+
+W `tryhackx-media.conf` ustaw trzy rzeczy — wszystkie są opisane w jego
+nagłówku: `Define`y (nazwa hosta, `/opt/tryhackx-media-server/current`,
+`/etc/tryhackx-media-server/config.local.toml`) oraz ścieżki certyfikatu.
+Czwarta, `[app] base_url`, jest już w prywatnej konfiguracji z kroku 1 — i ma
+być tą samą nazwą, którą wpisujesz tutaj. W `media-transfer.conf` wybierz
+wariant dostępu:
+
+- **`Require local`** (domyślny) — instalacja widoczna wyłącznie z tej maszyny;
+- **`Require all granted`** — instalacja sieciowa. Bez tej zmiany biblioteka
+  się wyświetla, ale **każde odtworzenie i pobranie dostaje 403**. Trasy
+  transferu chroni podpisany token o krótkim czasie życia, wydawany przez most
+  po sprawdzeniu sesji, więc ich otwarcie jest zamierzone; zdrowie usługi
+  i zlecenia zadań zostają zamknięte osobną regułą w tym samym pliku.
+
+W obu fragmentach `Define` zostają zakomentowane — wartości przychodzą z hosta.
+Nierozwinięte `${…}` weszłoby do ścieżek jako zwykły tekst, a `configtest`
+przepuściłby to jako „Syntax OK", więc `media-next.conf` zaczyna się od
+`IfDefine`, który zamiast tego wywala test zdaniem mówiącym, którego `Define`
+brakuje.
+
+Certyfikat musi już być na dysku — dlaczego, zaraz niżej. Potem:
+
+```bash
+sudo a2ensite tryhackx-media
 sudo apache2ctl configtest
 sudo systemctl reload apache2
 ```
 
 **Kolejność nie jest kosmetyczna.** `apache2.conf` Debiana wciąga wyłącznie
-`conf-enabled/*.conf`, więc `configtest` uruchomiony **przed** `a2enconf`
-sprawdza wszystko oprócz tych dwóch plików i mówi „Syntax OK" o konfiguracji,
-której nie przeczytał. Gdy test po włączeniu nie przejdzie, wyłącz je
-(`sudo a2disconf media-next media-transfer`) i dopiero wtedy przeładuj — reload
-z błędną konfiguracją zatrzymuje **cały** serwer, a nie tylko te trasy.
+`sites-enabled/*.conf` i `conf-enabled/*.conf`, więc `configtest` uruchomiony
+**przed** `a2ensite` sprawdza wszystko oprócz tego pliku i mówi „Syntax OK"
+o konfiguracji, której nie przeczytał. Gdy test po włączeniu nie przejdzie,
+wyłącz host (`sudo a2dissite tryhackx-media`) i dopiero wtedy przeładuj —
+reload z błędną konfiguracją zatrzymuje **cały** serwer, a nie tylko te trasy.
+
+Fragmenty są tu wciągane **przez host** (`Include`), a nie przez `a2enconf`,
+i ma to jeden konkretny powód: `conf-enabled` jest czytane **przed**
+`sites-enabled`, więc `Define` postawiony w hoście byłby dla nich za późno.
+Włączenie globalne też jest poprawne — wtedy `Define`y muszą siedzieć wewnątrz
+`media-next.conf`, a z hosta trzeba usunąć obie linie `Include`, inaczej te same
+aliasy wejdą dwa razy. Aliasy globalne dotyczą jednak **wszystkich** hostów na
+tej maszynie; na serwerze, który obsługuje też coś innego, host jest właściwszy.
+
+**HTTPS nie jest tu ozdobą.** Most odrzuca logowanie po zwykłym HTTP (`422`),
+więc bez certyfikatu aplikacja załaduje się i odbije każde kliknięcie. Przykład
+hosta ma gotowe przekierowanie z portu 80 i nagłówek HSTS.
+
+**Certyfikat bierze się przed `a2ensite`, nie po.** Apache ze wskazanym,
+a nieistniejącym `SSLCertificateFile` **nie wstaje**: `configtest` kończy się
+błędem „does not exist or is empty" i kodem 1 (sprawdzone). Kolejność, która
+działa — port 80 obsługuje jeszcze domyślny host Debiana:
+
+```bash
+sudo apt install certbot
+sudo certbot certonly --webroot -w /var/www/html -d twoj.host
+```
+
+Instalacja w sieci prywatnej bez TLS jest możliwa i wymaga świadomego
+`[session] require_https = false` — kształt **D** w `PUBLIC-EXPOSURE.md`.
 
 `configtest` łapie brak `mod_headers` („Invalid command 'Header'"), `mod_env`
 („Invalid command 'SetEnv'") i `mod_alias` („Invalid command 'RedirectMatch'"),
@@ -214,6 +284,37 @@ własny `timeout=3600`: bez niego film albo ZIP przerywałby się po domyślnym
 `Timeout` (60 s), bo to jedno długie żądanie. Globalne limity PHP i Apache
 zostają nietknięte. Po pełnym cutover bezpośredni dostęp do katalogów
 multimedialnych musi być niemożliwy.
+
+**8. Pierwsze konto — i to jedyny krok, którego nie da się zrobić w aplikacji.**
+Świeża instalacja nie ma żadnego konta, a rejestracja jest **domyślnie
+wyłączona** (`registration_enabled = '0'`). Jest to celowe — serwer przychodzi
+zamknięty — ale znaczy też, że pod adresem stoi strona logowania, do której nikt
+nie ma jak wejść. Drzwi otwiera się na chwilę, po czym zamyka:
+
+```sql
+UPDATE app_settings SET setting_value = '1' WHERE setting_key = 'registration_enabled';
+UPDATE app_settings SET setting_value = '0' WHERE setting_key = 'registration_requires_activation';
+```
+
+Teraz rejestracja w przeglądarce, pod adresem serwera. Potem nadanie praw
+i zamknięcie z powrotem:
+
+```sql
+UPDATE users SET role = 'super_admin' WHERE username = 'twoja-nazwa';
+UPDATE app_settings SET setting_value = '0' WHERE setting_key = 'registration_enabled';
+UPDATE app_settings SET setting_value = '1' WHERE setting_key = 'registration_requires_activation';
+```
+
+To wszystko jest DML, więc wystarczy konto aplikacji — `root` nie jest potrzebny.
+`role` decyduje o panelu administracyjnym; prawa do bibliotek, pobrań i limitów
+biorą się z **grupy uprawnień** i od tej chwili ustawia się je już w panelu.
+
+Wyłączenie aktywacji na czas pierwszej rejestracji jest skrótem: bez niego
+wiadomość aktywacyjna trafia tam, gdzie kieruje `[mail]`, a bez SMTP jako plik
+`.eml` do `/var/log/tryhackx-media-server/mail` — link da się z niego wyjąć
+ręcznie. Skrót jest krótszy i nie zostawia po sobie konta bez potwierdzonego
+adresu. Kolejne konta zakłada się już normalnie, przez rejestrację albo przez
+listę oczekujących w panelu.
 
 ## Aktualizacja
 

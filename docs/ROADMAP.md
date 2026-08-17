@@ -4,16 +4,16 @@ Wyłącznie **otwarte** prace. Co zostało zamknięte i kiedy: `CHANGELOG.md`.
 
 ## Stan na 17.08.2026
 
-System działa pod `/media-next/`, wyłącznie na localhost, i jest samodzielny: własne logowanie,
-własna baza, cache i FFmpeg w `runtime/`. Kod leży w `C:\wamp64\media-server`, czyli **poza**
-`DocumentRoot`, i jest w gicie (`github.com/TryHackX/media-server`, wydanie `v0.1.1`).
-Migracje: do `039`.
+System działa pod **głównym adresem** (`/`, nie pod podkatalogiem) i od 17.08.2026 jest
+**wystawiony publicznie** przez reverse proxy. Jest samodzielny: własne logowanie, własna baza,
+cache i FFmpeg w `runtime/`. Kod leży w `C:\wamp64\media-server`, czyli **poza** `DocumentRoot`,
+i jest w gicie (`github.com/TryHackX/media-server`, wydanie `v0.2.0`). Migracje: do `039`.
 
 | Etap | Stan |
 |---|---|
 | M1–M5.6 | gotowe |
 | M6 Utwardzenie wydania | gotowe (17.08.2026) |
-| M7 Kontrolowany cutover | **w toku** — został sam cutover i smoke test po nim |
+| M7 Kontrolowany cutover | **przełączone (17.08.2026)** — zostało przeładowanie po poprawce reguły zdrowia |
 
 ## M7 — kontrolowany cutover
 
@@ -42,25 +42,45 @@ Stan każdego punktu sprawdzony w kodzie i na dysku, nie przyjęty na słowo.
       **`SetEnv TRYHACKX_BRIDGE_ALLOW_HTTP_LOCAL` zostaje** — wbrew temu, co tu wcześniej stało:
       dopuszcza zwykłe HTTP **wyłącznie z pętli zwrotnej**, więc bez niej zepsułby się localhost,
       a gość z zewnątrz (peer = VPS) i tak musi mieć HTTPS.
-- [ ] **Przeładowanie Apache przez właściciela** — do tej chwili nic z powyższego nie działa.
-      To jest moment, w którym dostęp naprawdę się otwiera.
-- [ ] **Smoke test po przełączeniu** — sześć punktów kontrolnych na końcu `PUBLIC-EXPOSURE.md`.
+- [x] **Przeładowanie Apache** — zrobione przez właściciela 17.08.2026. Dostęp jest otwarty.
+- [x] **Smoke test po przełączeniu** — wykonany na żywo przez publiczny adres, na koncie
+      tymczasowym skasowanym po `username` (stan kont przed i po: 3). Przeszły: logowanie po
+      HTTPS, wydanie tokenu transferowego i odtworzenie zakresu bajtów (`206`, 2048 B),
+      przekierowanie z `http://` (`301`) oraz ignorowanie podrobionego `X-Forwarded-For`
+      (dwa różne nagłówki → ten sam `client_hash`). **Padł jeden punkt** — zdrowie usługi
+      transferowej odpowiadało publicznie; przyczyna i poprawka niżej.
       Punkt „procedura powrotu do starych tras" odpada: nie ma już starych tras, a jedyne
       wycofanie to zrzut SQL plus starsze wydanie z gita.
 
+Zostały trzy rzeczy, których nie da się sprawdzić z powłoki agenta:
+
+- [ ] **Przeładowanie Apache po poprawce reguły zdrowia** — żywa konfiguracja stagingu jest już
+      poprawiona i przechodzi `httpd -t`, ale do przeładowania `/media-transfer/health/ready`
+      nadal odpowiada `200`. Po przeładowaniu ma oddać `403`.
+- [ ] **Rejestracja mailem** — link buduje się z `[app] base_url`, które jest pełnym adresem
+      publicznym i zgadza się z bazą frontu (`media-server check`: `agree: true`). Samej
+      **dostarczalności** nie sprawdzono: wymaga prawdziwej skrzynki, a rejestracja na adres
+      zmyślony to odbita wiadomość i zepsuta reputacja nadawcy.
+- [ ] **Instalacja PWA z telefonu i powłoka offline** — jedyny sposób sprawdzenia service
+      workera; przeglądarka narzędzi agenta odrzuca każdą rejestrację.
+
 **Topologia sprawdzona empirycznie 17.08.2026**, bo różni się od pierwotnego założenia: TLS
 kończy się **na tej maszynie** (`_default_:443`, `fullchain.pem`), a VPS jest proxy HTTP —
-`REMOTE_ADDR` to `[adres w prywatnej konfiguracji]`, `HTTPS=on`, `X-Forwarded-For` i `X-Forwarded-Proto` ustawione,
-przekierowanie z portu 80 na HTTPS robi już samo proxy. DNS `home.tryhackx.org` wskazuje na VPS,
-łącze domowe ma inny adres.
+`HTTPS=on`, `X-Forwarded-For` i `X-Forwarded-Proto` ustawione, przekierowanie z portu 80 na
+HTTPS robi już samo proxy. Adresy proxy stoją w `[proxy] trusted` w prywatnej konfiguracji
+i nie są tu przepisywane. DNS `home.tryhackx.org` wskazuje na VPS, łącze domowe ma inny adres.
 
 ## Długi techniczne
 
 ### Czeka na właściciela
 
-- **Aktywacja service workera niesprawdzona** — przeglądarka narzędzi agenta odrzuca każdą
-  rejestrację, więc powłoka offline była weryfikowana statycznie. Pierwsze wejście z telefonu
-  albo z Chrome właściciela to potwierdzi.
+- **Aktywacja service workera niesprawdzona w prawdziwej przeglądarce** — przeglądarka
+  narzędzi agenta odrzuca każdą rejestrację. 17.08 przegląd wykazał, że worker miał wpisaną
+  na sztywno bazę `/media-next/` i po przeprowadzce pod `/` ignorował każde żądanie; baza
+  bierze się teraz z jego własnego adresu, a test node sprawdza obie ścieżki. **Czego test
+  nie sprawdzi**: czy przeglądarka rzeczywiście go zarejestruje i czy ikona z ekranu
+  telefonu otwiera się bez paska adresu. Pierwsze wejście z telefonu po HTTPS to potwierdzi
+  — i ono jedno pokaże, czy powłoka offline działa naprawdę.
 - **Restart stagingu** — bieżący proces (PID z 16.08) nie daje się zatrzymać skryptem:
   `Win32_Process.CommandLine` wraca pusty, więc kontrola tożsamości w `stop-stage-windows.ps1`
   słusznie odmawia. **Od 17.08 to nie jest już tylko porządek**: poprawka roku w tagach siedzi
@@ -80,6 +100,13 @@ przekierowanie z portu 80 na HTTPS robi już samo proxy. DNS `home.tryhackx.org`
     pusta. Zostało 138 dzieł w przeglądzie — to praca człowieka, nie maszyny.
 
 ### Do zrobienia, gdy zacznie przeszkadzać
+
+- **Pierwsze konto zakłada się SQL-em** — świeża instalacja nie ma żadnego konta, a rejestracja
+  jest domyślnie wyłączona, więc jedyne wejście prowadzi przez `UPDATE app_settings`, rejestrację
+  i `UPDATE users SET role = 'super_admin'`. Od 17.08 jest to opisane w obu instrukcjach jako
+  osobny krok, ale właściwym rozwiązaniem byłoby polecenie (`media-server account-create`
+  albo skrypt PHP obok `digest.php` — hasła liczy `password_hash()`, więc naturalniej po stronie
+  PHP). Dopóki instalacja jest jedna, kosztuje to raz w życiu serwera.
 
 - **Poczta wychodząca przedstawia się nazwą serwera** — `Mailer::heloName()` bierze
   `SERVER_NAME` na komendę `HELO`. Trafia to do serwera SMTP i nagłówków wiadomości, nie do
@@ -121,8 +148,9 @@ przekierowanie z portu 80 na HTTPS robi już samo proxy. DNS `home.tryhackx.org`
 - **Historia statystyk ma dziurę po każdym restarcie usługi** — dziennik pisze proces
   transferowy. Próbki są rysowane takie, jakie są, bez interpolacji: zmyślona minuta wygląda
   dokładnie tak samo jak prawdziwa.
-- **Linki gościnne działają dziś tylko z tej maszyny** — Apache trzyma `Require local` do końca
-  M7. Po wystawieniu przez proxy zaczną działać bez zmian w kodzie.
+- **Linki gościnne są domyślnie wyłączone** (`app_settings.guest_links_enabled`) i takie zostają:
+  wystawienie publiczne (17.08.2026) zdjęło z nich `Require local`, więc działają już bez zmian
+  w kodzie, ale włączenie ich to świadoma decyzja właściciela, a nie stan domyślny.
 - **Strefy czasu PHP i MySQL są tu różne** (dwie godziny). Porównania dat robić w SQL; dziś
   w kodzie nie ma już żadnego porównania znacznika z bazy z zegarem PHP.
 - **Rok utworu to rok, nie data wydania** — tagi Vorbis niosą pod `date` pełne `1940-03-25`,

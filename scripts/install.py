@@ -5,6 +5,7 @@ import argparse
 import base64
 import csv
 import getpass
+import ipaddress
 import json
 import os
 import re
@@ -40,6 +41,46 @@ def _root_argument(raw: str) -> tuple[str, Path]:
         return root_id.lower(), _absolute_directory(path, f"Źródło {root_id}")
     except ValueError as exc:
         raise argparse.ArgumentTypeError(str(exc)) from exc
+
+
+def _base_url_argument(raw: str) -> str:
+    """The public address of the application, as activation mail will quote it.
+
+    A relative path is legal and is what a localhost installation uses, but the
+    link goes out by e-mail: there it has to be something a stranger can click,
+    which means a scheme and a host. Both forms are accepted here, and the one
+    that cannot work in mail is the one worth being deliberate about.
+    """
+    value = raw.strip()
+    if value.startswith(("http://", "https://")):
+        return value
+    if value.startswith("/"):
+        return value
+    raise argparse.ArgumentTypeError(
+        "base_url musi być pełnym adresem (https://twoj.host/) albo ścieżką zaczynającą się od /"
+    )
+
+
+def _proxy_trusted_argument(raw: str) -> str:
+    """Addresses of the proxies allowed to say who the client is.
+
+    Checked here rather than at first request, because the failure is silent:
+    a typo means the header is ignored, every visitor arrives wearing the
+    proxy's address, and login throttling and CAPTCHA quietly stop protecting
+    anything. Names are refused on purpose — the bridge compares packed
+    addresses and would never match one.
+    """
+    entries = [entry for entry in re.split(r"[\s,]+", raw.strip()) if entry]
+    if not entries:
+        raise argparse.ArgumentTypeError("Lista zaufanych proxy nie może być pusta")
+    for entry in entries:
+        try:
+            ipaddress.ip_address(entry)
+        except ValueError as exc:
+            raise argparse.ArgumentTypeError(
+                f"„{entry}” nie jest adresem IP — most porównuje adresy, nie nazwy"
+            ) from exc
+    return ", ".join(entries)
 
 
 def _python_in_venv(directory: Path) -> Path:
@@ -115,6 +156,27 @@ def _build_config(
         f"user = {_toml_string(args.db_user)}",
         f"password = {_toml_string(password)}",
     ]
+    # Both sections are read by the PHP bridge alone and both are empty by
+    # default: the root, and no proxy in front of us. They are written only when
+    # asked for, so a local installation keeps a file with nothing to explain.
+    if args.base_url:
+        lines.extend([
+            "",
+            "# Publiczny adres aplikacji — stąd biorą się linki aktywacyjne, gościnne",
+            "# i przegląd nowości. Musi zgadzać się z bazą, dla której zbudowano front",
+            "# (MEDIA_APP_BASE); rozjazd wskaże `media-server check`.",
+            "[app]",
+            f"base_url = {_toml_string(args.base_url)}",
+        ])
+    if args.proxy_trusted:
+        lines.extend([
+            "",
+            "# Adresy proxy, którym wolno powiedzieć, kto jest klientem i czym przyszedł.",
+            "# Bez tego wpisu limit prób logowania i CAPTCHA widzą wszystkich gości jako",
+            "# jeden adres, a most odrzuca ruch z proxy kończącego TLS jako niezabezpieczony.",
+            "[proxy]",
+            f"trusted = {_toml_string(args.proxy_trusted)}",
+        ])
     for root_id, path in sorted(roots.items()):
         lines.extend(["", f"[roots.{root_id}]", f"path = {_toml_string(str(path))}"])
     return "\n".join(lines) + "\n"
@@ -238,6 +300,17 @@ def _parser() -> argparse.ArgumentParser:
     )
 
     parser.add_argument("--ffmpeg-path", default="ffmpeg", help="Ścieżka do FFmpeg lub nazwa polecenia")
+    parser.add_argument(
+        "--base-url",
+        type=_base_url_argument,
+        help="Publiczny adres aplikacji, np. https://twoj.host/ (domyślnie katalog główny)",
+    )
+    parser.add_argument(
+        "--proxy-trusted",
+        type=_proxy_trusted_argument,
+        metavar="ADRESY",
+        help="Adresy reverse proxy przed serwerem, po przecinku (patrz docs/PUBLIC-EXPOSURE.md)",
+    )
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument("--db-host", default="127.0.0.1")
     parser.add_argument("--db-port", type=int, default=3306)

@@ -5,9 +5,12 @@ interface for a music and a movie library. Python streams the bytes, PHP holds t
 the short API, TypeScript renders the interface. The interface language is Polish; the code and
 the documentation are English.
 
-> Status: released and in use. The reference installation runs on localhost; exposing it to a
-> network — directly or behind a reverse proxy — is described in
-> [docs/PUBLIC-EXPOSURE.md](docs/PUBLIC-EXPOSURE.md).
+> Status: released and in use. It runs on a VPS, on a home server or on a single machine, and
+> serves the library at the root of its host. Four shapes are supported — directly on a public
+> address, behind a reverse proxy, on a private network without TLS, or on localhost only. Each
+> one, together with a complete virtual host to copy
+> ([deploy/apache/media-vhost.conf.example](deploy/apache/media-vhost.conf.example)), is described
+> in [docs/PUBLIC-EXPOSURE.md](docs/PUBLIC-EXPOSURE.md).
 
 ## What it does
 
@@ -107,7 +110,8 @@ python scripts/lock-deps.py        # refresh requirements*.lock (needs uv)
 ## Requirements
 
 Python 3.11+, PHP 8.1+ with OpenSSL, MySQL 8.x or MariaDB 10.4+, Apache 2.4 with `proxy`,
-`proxy_http` and `headers`. Node.js is needed only to build the frontend from source. FFmpeg is
+`proxy_http` and `headers` — plus `ssl` for anything reachable over a network, because signing in
+over plain HTTP is refused. Node.js is needed only to build the frontend from source. FFmpeg is
 required for the video compatibility mode, thumbnails and subtitle extraction.
 
 ## Licence

@@ -91,6 +91,33 @@ tylko raz — w linii `Define TRYHACKX_MEDIA_ROOT`; dla innej lokalizacji zmień
 CAPTCHA (reCAPTCHA, hCaptcha, Turnstile); bez tego bloku włączenie CAPTCHA w panelu zablokowałoby
 logowanie. Po aktualizacji szablonu skopiuj go ponownie do `alias\` i przeładuj Apache.
 
+## Wystawienie poza tę maszynę
+
+Szablon z `alias\` jest **fragmentem**: daje aliasy, nagłówki i trasę transferu,
+ale nie mówi, pod jaką nazwą i na jakim porcie serwer odpowiada. Aplikacja stoi
+pod `/`, a to `DocumentRoot` hosta wirtualnego — w WAMP-ie
+`conf\extra\httpd-vhosts.conf`, wskazany na `public\assets\build`. Kompletny
+przykład z TLS, HSTS i przekierowaniem z portu 80 jest w
+`deploy/apache/media-vhost.conf.example`; wszystkie kształty wystawienia
+(za proxy, wprost, tylko LAN, tylko localhost) opisuje `PUBLIC-EXPOSURE.md`.
+
+Poza samą konfiguracją Apache domowa maszyna wymaga czterech rzeczy, których
+Linux w tym miejscu nie potrzebuje inaczej:
+
+- **reguła zapory** dla portów 80 i 443 (`New-NetFirewallRule`, wymaga UAC) —
+  domyślnie Windows wpuszcza tylko sieć prywatną, więc bez tego z internetu nie
+  wejdzie nic, a lokalnie wszystko wygląda dobrze;
+- **przekierowanie portów na routerze** i **DNS dynamiczny**, bo adres łącza
+  domowego zwykle się zmienia;
+- **certyfikat** — na Windowsie najprościej `win-acme`; port 80 też musi być
+  przekierowany, inaczej odnowienie nie ma jak dojść;
+- **przeładowanie usługi Apache z UAC**, tak samo jak przy stagingu.
+
+W sieci prywatnej bez TLS (telefon w domowym Wi-Fi, adres `192.168.x.x`) trzeba
+świadomie ustawić `[session] require_https = false` — kształt **D**
+w `PUBLIC-EXPOSURE.md`. Wyjątek `TRYHACKX_BRIDGE_ALLOW_HTTP_LOCAL` tego nie
+załatwia: dotyczy wyłącznie pętli zwrotnej, czyli tej jednej maszyny.
+
 ## Baza
 
 Utwórz jedną pustą bazę i dedykowanego użytkownika. Nie używaj konta `root` w aplikacji. Następnie:
@@ -101,6 +128,30 @@ Utwórz jedną pustą bazę i dedykowanego użytkownika. Nie używaj konta `root
 
 Migracje twórz i uruchamiaj przeciw własnej bazie serwera; nie mieszaj ich z żadną inną bazą
 działającą na tej maszynie.
+
+## Pierwsze konto
+
+Świeża instalacja nie ma żadnego konta, a rejestracja jest **domyślnie wyłączona**
+(`registration_enabled = '0'`) — serwer przychodzi zamknięty. Pod adresem stoi więc strona
+logowania, do której nikt nie ma jak wejść. Drzwi otwiera się na chwilę:
+
+```sql
+UPDATE app_settings SET setting_value = '1' WHERE setting_key = 'registration_enabled';
+UPDATE app_settings SET setting_value = '0' WHERE setting_key = 'registration_requires_activation';
+```
+
+Po rejestracji w przeglądarce nadaj sobie prawa i zamknij z powrotem:
+
+```sql
+UPDATE users SET role = 'super_admin' WHERE username = 'twoja-nazwa';
+UPDATE app_settings SET setting_value = '0' WHERE setting_key = 'registration_enabled';
+UPDATE app_settings SET setting_value = '1' WHERE setting_key = 'registration_requires_activation';
+```
+
+To DML, więc wystarczy konto aplikacji. `role` otwiera panel administracyjny; prawa do
+bibliotek i limity biorą się z grupy uprawnień i ustawia się je już w panelu. Bez wyłączenia
+aktywacji wiadomość trafi bez SMTP jako plik `.eml` do `logs\mail` — link da się z niego wyjąć,
+ale skrót wyżej jest krótszy i nie zostawia konta z niepotwierdzonym adresem.
 
 ## Rollback lokalnego stagingu
 
@@ -260,7 +311,7 @@ Apache i ponowna rejestracja zadania). Poniżej `NOWY` oznacza docelowy katalog.
    scripts\start-stage-windows.bat
    ```
 
-7. Smoke test: `health/ready`, `http://127.0.0.1/media-next/`, `?action=auth_state`, logowanie,
+7. Smoke test: `health/ready`, `http://127.0.0.1/`, `?action=auth_state`, logowanie,
    odtworzenie utworu, miniatura, pobranie ZIP.
 
 Rollback: przywróć starą wartość `Define` w aliasie i przeładuj Apache; stary katalog (jeśli
