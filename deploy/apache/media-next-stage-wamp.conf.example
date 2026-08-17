@@ -20,7 +20,12 @@ Define TRYHACKX_MEDIA_ROOT "C:/wamp64/media-server"
 # Stare adresy z czasów, gdy biblioteka stała pod /media-next/. Zakładki, historia
 # przeglądarki i zainstalowana aplikacja PWA trafiają dzięki temu tam, gdzie
 # trzeba, zamiast dostawać 404. `/media-next/music/` → `/music/`.
-RedirectMatch 302 "^/media-next/?(.*)$" "/$1"
+#
+# Po `/media-next` musi stać ukośnik albo koniec adresu. Wzorzec bez tego
+# (`/media-next/?(.*)`) łapie także **`/media-next-api`** i przerzuca most na
+# `/-api` — aplikacja ładuje się wtedy w całości i pokazuje puste tło, bo nie
+# ma z czym rozmawiać.
+RedirectMatch 302 "^/media-next(?:/(.*))?$" "/$1"
 
 # Publiczny profil konta ma własny adres (`/account/ktos/`), a to jedna strona
 # z jednym plikiem — bez tej reguły wejście prosto pod taki adres kończy się 404.
