@@ -13,7 +13,7 @@ i jest w gicie (`github.com/TryHackX/media-server`, wydanie `v0.2.0`). Migracje:
 |---|---|
 | M1–M5.6 | gotowe |
 | M6 Utwardzenie wydania | gotowe (17.08.2026) |
-| M7 Kontrolowany cutover | **przełączone (17.08.2026)** — zostało przeładowanie po poprawce reguły zdrowia |
+| M7 Kontrolowany cutover | **zamknięte (17.08.2026)** — przełączone, sprawdzone na żywo, reguły dostępu domknięte |
 
 ## M7 — kontrolowany cutover
 
@@ -52,13 +52,13 @@ Stan każdego punktu sprawdzony w kodzie i na dysku, nie przyjęty na słowo.
       Punkt „procedura powrotu do starych tras" odpada: nie ma już starych tras, a jedyne
       wycofanie to zrzut SQL plus starsze wydanie z gita.
 
-Zostały trzy rzeczy, których nie da się sprawdzić z powłoki agenta:
+- [x] **Poprawka reguły zdrowia wdrożona** — Apache przeładowany 17.08.2026. Sprawdzone
+      z zewnątrz: `health/ready`, `health/live`, `v1/catalog-scan`, `v1/metadata-worker`,
+      `v1/subtitle-cache` i `v1/stats` oddają `403`. Bez regresji: smoke test E2E powtórzony
+      po przeładowaniu przeszedł w komplecie (logowanie, token, `206` z 2048 B, przekierowanie
+      z HTTP, ignorowanie podrobionego `X-Forwarded-For`), a aplikacja i most odpowiadają `200`.
 
-- [ ] **Przeładowanie Apache po poprawce reguły zdrowia** — żywa konfiguracja stagingu jest już
-      poprawiona i przechodzi `httpd -t`, ale do przeładowania `/media-transfer/health/ready`
-      nadal odpowiada `200`. Że po przeładowaniu odda `403`, jest **zmierzone**: ten sam plik
-      wciągnięty do osobnego `httpd` na wolnym porcie oddaje `403` na zdrowiu i na
-      `v1/catalog-scan`, przy niezmienionym `403` na trasie transferu i `200` na aplikacji.
+Zostały dwie rzeczy, których nie da się sprawdzić z powłoki agenta:
 - [ ] **Rejestracja mailem** — link buduje się z `[app] base_url`, które jest pełnym adresem
       publicznym i zgadza się z bazą frontu (`media-server check`: `agree: true`). Samej
       **dostarczalności** nie sprawdzono: wymaga prawdziwej skrzynki, a rejestracja na adres

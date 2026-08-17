@@ -7,6 +7,11 @@ Zamknięte etapy i serie zmian; otwarte prace są wyłącznie w `ROADMAP.md`.
 Bez migracji. Apache przeładowany przez właściciela; smoke test wykonany po raz pierwszy
 na żywo, przez publiczny adres.
 
+**Stan po drugim przeładowaniu (domknięcie M7):** wszystkie sześć tras wewnętrznych usługi
+transferowej oddaje z zewnątrz `403` — `health/ready`, `health/live`, `v1/catalog-scan`,
+`v1/metadata-worker`, `v1/subtitle-cache`, `v1/stats`. Smoke test E2E powtórzony po
+przeładowaniu przeszedł w komplecie, więc zamknięcie nie zabrało niczego po drodze.
+
 - **Zdrowie usługi transferowej było osiągalne z internetu.** `https://…/media-transfer/health/ready`
   oddawało `200` i `{"status":"ready","unavailable_roots":[]}` zamiast 403. Reguła zamykająca
   **istniała** i wyglądała poprawnie — stała tylko w złym miejscu. `<Location>` i `<LocationMatch>`
