@@ -2,6 +2,30 @@
 
 Zamknięte etapy i serie zmian; otwarte prace są wyłącznie w `ROADMAP.md`.
 
+## 17.08.2026 (późnym wieczorem) — historia przepisana, jeden tag
+
+Bez migracji i bez zmian w kodzie. **Wszystkie SHA się zmieniły** — kto ma stary klon, musi
+sklonować od nowa; `git pull` nie połączy tych dwóch historii.
+
+- **Adres VPS-a usunięty z historii.** Siedział w `docs/ROADMAP.md` w dwóch commitach
+  (dodany, potem usunięty). `git filter-repo --replace-text` zamienił go na
+  `[adres w prywatnej konfiguracji]`; 17 commitów zachowanych, `f9cbeba` → `9c88e8f`.
+  Sprawdzone przez skan **wszystkich 460 obiektów** repozytorium i osobno na świeżym
+  klonie: zero trafień.
+- **Tagi skasowane i odtworzony jeden.** Przy okazji wyszło, że **`v0.1.0` nigdy nie był
+  na zdalnym** — istniał tylko lokalnie, więc pierwsze wydanie nie było publicznie
+  oznaczone. Zdalnie były `v0.1.1` i `v0.2.0`; oba skasowane, został jeden nowy `v0.2.0`
+  wskazujący na bieżący stan.
+- **Czego przepisanie NIE załatwia, i to jest zmierzone, nie przypuszczane**: GitHub nadal
+  serwuje osierocone commity po SHA. `https://api.github.com/…/commits/85592bc` i
+  `https://raw.githubusercontent.com/…/85592bc/docs/ROADMAP.md` oddają adres dalej.
+  Zniknie dopiero po odśmiecaniu po stronie GitHuba — do tego trzeba zgłoszenia do
+  ich wsparcia. Sam adres jest rekordem A dla `home.tryhackx.org`, więc DNS podaje go
+  i tak; przepisanie było decyzją właściciela mimo tej uwagi.
+- **Kopia przed operacją**: `C:\wamp64\backups\media-server-20260817-pre-history-rewrite.bundle`
+  (896 kB, `git bundle verify`: „complete history", ze wszystkimi trzema starymi tagami).
+  Do skasowania, gdy nowy stan się przyjmie.
+
 ## 17.08.2026 (wieczorem) — **cutover wykonany**, i reguła, która nie działała
 
 Bez migracji. Apache przeładowany przez właściciela; smoke test wykonany po raz pierwszy
