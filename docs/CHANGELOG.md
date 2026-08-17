@@ -2,6 +2,49 @@
 
 Zamknięte etapy i serie zmian; otwarte prace są wyłącznie w `ROADMAP.md`.
 
+## 17.08.2026 (rano) — rok utworu znowu jest rokiem, sesja przestała być cudza
+
+Migracja **039** (rok w zapisanych tagach). Backup ten sam co przy poprzedniej serii.
+
+- **Karta pokazywała `2017-11-03` zamiast `2017`.** Zgłoszenie właściciela. Tagi Vorbis — czyli
+  większość tej biblioteki we FLAC-u — niosą pełną datę wydania pod `date`, a czytnik zapisywał
+  to, co znalazł, dosłownie. Pole nazywa się `year`, stoi na karcie obok gatunku i formatu, i tak
+  jest odpytywane; data w nim to była obietnica, której nie dotrzymywało.
+- **To nie był margines.** Zmierzone przed poprawką: **6390** utworów z pełnym `RRRR-MM-DD`,
+  71 z `RRRR-MM`, 2 ze znacznikiem czasu — przeciw 2260, które miały już sam rok. Zepsuta była
+  większość biblioteki, tylko rzucało się w oczy dopiero przy jednym albumie.
+- **Czytnik zostawia teraz sam rok** (`release_year` w `metadata.py`), a wartość, która nie
+  zaczyna się od sensownego rocznika, zostaje **dokładnie taka, jak ją zapisał tagger** — nie
+  wiadomo, co znaczy, a zgadywanie skasowałoby jedyny jej ślad. Przy okazji zniknął duplikat:
+  worker metadanych miał własną, identyczną regułę wycinania roku i teraz woła tę jedną.
+- **Migracja zamiast ponownego czytania plików.** Poprawka czytnika naprawia pliki czytane od
+  teraz; wiersze już zapisane naprawia **039** jednym `UPDATE` po `JSON_SET`. Ponowne otwarcie
+  12 800 plików, których tagi się nie zmieniły, kosztowałoby półtorej godziny po to, żeby
+  odtworzyć ciąg znaków, który da się poprawić dokładnie. Po migracji: **wszystkie 8723** utwory
+  mają czteroznakowy rok, biblioteka mieści się w 1904–2024, a utwór ze zgłoszenia pokazuje `2017`.
+- **Rozcięcie mostu sesji legacy** (punkt M7). Ciasteczko nazywało się `PHPSESSID` i było
+  współdzielone z portalem, który mieszkał w tym samym `DocumentRoot`: jedno ciasteczko, dwie
+  aplikacje, a to, która pierwsza wystartuje sesję, decydowało o tym, co widzi druga. Portalu już
+  nie ma, więc współdzielenie nie miało czego bronić — a własna nazwa oznacza, że sesji stąd nie
+  da się podać ani przejąć niczemu innemu, co akurat działa na tym hoście.
+- **Nazwa jest konfigurowalna i sprawdzana.** `[session] name`, domyślnie `TRYHACKXSESSID`, same
+  litery i cyfry — PHP wstawia to wprost do nagłówka `Set-Cookie`, a nazwa, której nie przyjmie,
+  kończy się ostrzeżeniem przy `session_name()`, którego nikt nie zauważy. Walidacja i wartość
+  domyślna są w jednym miejscu, wspólnym dla obu formatów konfiguracji (TOML i tablica PHP).
+- **Koszt policzony, nie oszacowany**: `user_sessions` miała **jeden** wiersz, więc zmiana
+  wylogowała jedną przeglądarkę. Sprawdzone na żywo — most oddaje teraz
+  `Set-Cookie: TRYHACKXSESSID=…; HttpOnly; SameSite=Strict`.
+- **Roadmapa przycięta do stanu faktycznego**, bo kilka długów było już spłaconych: Apache
+  **podniósł** nową konfigurację aliasu (sprawdzone — `sw.js` oddaje `Cache-Control: no-cache`),
+  kolejka metadanych jest **pusta**, a gatunki filmów **zrobione** (1645 dopasowanych, 138 w
+  przeglądzie — to praca człowieka). Zaktualizowane liczby tam, gdzie się rozjechały: nieudanych
+  zadań metadanych jest 10, nie 5; odcisków brakuje 7706 z 20 323. Nowa świadoma decyzja: rok
+  to rok, pełna data z tagu nie jest przechowywana i nie jest to przeoczenie.
+- Testy: **9 nowych** — sześć na zapisywanie roku z każdego kształtu tagu, jaki ta biblioteka
+  naprawdę zawiera (plus dwa, w których tag nie jest datą i zostaje nietknięty), jeden na brak
+  tagu, i zaktualizowane oczekiwania mostu co do nazwy ciasteczka w obu formatach konfiguracji.
+  Bramka: 8/8, **319 testów**.
+
 ## 17.08.2026 (nad ranem, później) — czysta instalacja na Windows, **koniec M6**, wydanie 0.1.0 i 0.1.1
 
 Bez migracji. Backup przed serią: `C:\wamp64\backups\media-server-20260817-pre-clean-install`
