@@ -34,6 +34,23 @@ def _first(tags: Any, key: str) -> str | None:
     return text or None
 
 
+def release_year(raw: str | None) -> int | None:
+    """
+    The release year a tag states, as a number.
+
+    Taggers write the date every way there is — "1959", "1940-03-25", "1957-03",
+    "1904-01-01 00:00:00" — and Vorbis comments in particular carry the full one
+    under `date`. Only the leading year is wanted: the field is called `year`,
+    it is shown as a year, and a year is what every query against it means.
+    Anything outside living memory of recorded music is a broken tag, not a date.
+    """
+    head = (raw or "").strip()[:4]
+    if not head.isdigit():
+        return None
+    year = int(head)
+    return year if 1880 <= year <= 2049 else None
+
+
 def _positive_int(value: Any) -> int | None:
     try:
         parsed = int(value)
@@ -73,7 +90,11 @@ def read_audio_metadata(path: Path) -> AudioMetadata:
     year = _first(audio.tags, "date") or _first(audio.tags, "year")
     genre = _first(audio.tags, "genre")
     if year is not None:
-        technical["year"] = year
+        # A tag that does not start with a plausible year is kept verbatim: we
+        # cannot tell what it means, and guessing would destroy the only record
+        # of what the tagger actually wrote.
+        parsed = release_year(year)
+        technical["year"] = str(parsed) if parsed is not None else year
     if genre is not None:
         technical["genre"] = genre
 

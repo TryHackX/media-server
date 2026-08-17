@@ -11,7 +11,7 @@ import pymysql
 from pymysql.cursors import DictCursor
 
 from .config import DatabaseConfig
-from .metadata import read_audio_metadata
+from .metadata import read_audio_metadata, release_year
 from .paths import PathAccessError, resolve_item
 from .probe import ProbeError, read_media_probe
 from .security import GrantItem
@@ -212,18 +212,8 @@ def _probe_video(
 
 
 def _tag_year(technical: dict[str, Any]) -> int | None:
-    """
-    The release year an audio tag states, as a number.
-
-    Taggers write the date every way there is — "1996", "2000-05-07",
-    "2017-06-23T00:00:00Z" — and only the leading year is wanted. Anything
-    outside living memory of recorded music is a broken tag, not a year.
-    """
-    raw = str(technical.get("year") or "").strip()
-    if len(raw) < 4 or not raw[:4].isdigit():
-        return None
-    year = int(raw[:4])
-    return year if 1880 <= year <= 2049 else None
+    """The queryable year, read with the same rule the tag reader stores by."""
+    return release_year(str(technical.get("year") or ""))
 
 
 def _complete_job(connection: Any, job_id: int, item: dict[str, Any], metadata: dict[str, Any]) -> None:

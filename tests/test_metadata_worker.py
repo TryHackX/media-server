@@ -7,6 +7,7 @@ from typing import Any
 
 import pytest
 
+from media_server.metadata import read_audio_metadata
 from media_server.metadata_worker import (
     MetadataWorkerError,
     _merged_metadata,
@@ -150,6 +151,10 @@ def test_payload_item_id_rejects_invalid_values(payload: object) -> None:
         ("2000-05-07", 2000),
         ("2017-06-23T00:00:00Z", 2017),
         ("1969/07/20", 1969),
+        # The shapes this library actually turned out to hold.
+        ("1940-03-25", 1940),
+        ("1957-03", 1957),
+        ("1904-01-01 00:00:00", 1904),
         # Nothing usable, or nothing that can be a release year.
         ("", None),
         ("199", None),
@@ -164,3 +169,53 @@ def test_tag_year_reads_only_a_plausible_leading_year(tag: str, expected: int | 
 
 def test_tag_year_with_no_tag_at_all() -> None:
     assert _tag_year({}) is None
+
+
+def _fake_audio(monkeypatch: pytest.MonkeyPatch, tags: dict[str, list[str]]) -> None:
+    import mutagen
+
+    class _Info:
+        length = 240.0
+        bitrate = 320000
+        sample_rate = 44100
+        channels = 2
+
+    class _File:
+        info = _Info()
+
+    handle = _File()
+    handle.tags = tags  # type: ignore[attr-defined]
+    monkeypatch.setattr(mutagen, "File", lambda path, easy=False: handle)
+
+
+@pytest.mark.parametrize(
+    "tag, stored",
+    [
+        # Vorbis comments — most of this FLAC library — carry the full date under
+        # `date`, and the card next to genre and format has room for a year.
+        ("1940-03-25", "1940"),
+        ("1957-03", "1957"),
+        ("1904-01-01 00:00:00", "1904"),
+        ("1959", "1959"),
+        # Not a year, so not ours to reinterpret: kept exactly as written.
+        ("unknown", "unknown"),
+        ("MCMXCVI", "MCMXCVI"),
+    ],
+)
+def test_a_date_tag_is_stored_as_the_year_it_states(
+    tag: str, stored: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _fake_audio(monkeypatch, {"date": [tag], "title": ["Utwór"], "genre": ["Rock"]})
+
+    result = read_audio_metadata(tmp_path / "track.flac")
+
+    assert result.technical["year"] == stored
+    assert result.technical["genre"] == "Rock"
+
+
+def test_a_track_with_no_date_tag_stores_no_year(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _fake_audio(monkeypatch, {"title": ["Utwór"]})
+
+    assert "year" not in read_audio_metadata(tmp_path / "track.flac").technical
