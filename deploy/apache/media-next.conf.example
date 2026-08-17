@@ -1,11 +1,23 @@
 # PRZYKŁAD — nie włączaj przed utworzeniem prywatnej konfiguracji i smoke testem.
-# Repozytorium powinno leżeć poza DocumentRoot. W WAMP nie wskazuj obecnego
-# C:/wamp64/media-server, dopóki cały projekt nie zostanie przeniesiony.
+# Drzewo repozytorium ma leżeć **poza** DocumentRoot; serwowany jest wyłącznie
+# zbudowany frontend (`public/assets/build`) i jeden plik mostu.
 #
-# Ustaw obie ścieżki — bez nich nic nie zadziała, a Apache **nie** zgłosi błędu
-# sam z siebie: nierozwinięte `${…}` trafiłoby do ścieżek jako zwykły tekst,
-# `configtest` powiedziałby „Syntax OK", a aplikacja oddawałaby 404. Dlatego
-# niżej stoi jawna asercja.
+# Aplikacja stoi pod **głównym adresem** — tak, jak spodziewa się ktoś, kto
+# wpisze samą nazwę serwera. Odpowiada za to `DocumentRoot` hosta wirtualnego,
+# a nie alias: `Alias "/"` przykryłby wszystkie pozostałe aliasy na tym serwerze.
+#
+#   DocumentRoot "/opt/tryhackx-media-server/current/public/assets/build"
+#
+# Żeby postawić ją pod podkatalogiem (np. gdy host serwuje też coś innego),
+# zbuduj front z tą samą ścieżką i dodaj alias zamiast DocumentRoot:
+#
+#   MEDIA_APP_BASE=/media-next/ npm run build
+#   Alias "/media-next/" "${TRYHACKX_MEDIA_ROOT}/public/assets/build/"
+#
+# Ustaw obie ścieżki niżej — bez nich nic nie zadziała, a Apache **nie** zgłosi
+# błędu sam z siebie: nierozwinięte `${…}` trafiłoby do ścieżek jako zwykły
+# tekst, `configtest` powiedziałby „Syntax OK", a aplikacja oddawałaby 404.
+# Dlatego stoi tu jawna asercja.
 #
 # Windows, przykład:
 # Define TRYHACKX_MEDIA_ROOT "C:/ProgramData/TryHackX/media-server"
@@ -28,27 +40,29 @@
     Error "media-next.conf: TRYHACKX_BRIDGE_CONFIG is not set. Uncomment the Define above and point it at the private configuration."
 </IfDefine>
 
-# Odkomentuj, jeśli ten serwer jest **tylko** dla biblioteki: wejście pod gołym
-# adresem (`https://twoj.host/`) prowadzi wtedy prosto do niej, bez dopisywania
-# ścieżki. Wzorzec łapie wyłącznie `/`, więc nic innego nie zostaje przykryte —
-# ale domyślnie jest wyłączony, bo ten plik może trafić na serwer, który pod
-# głównym adresem ma już własną stronę.
-# RedirectMatch 302 ^/$ /media-next/
+# Publiczny profil konta ma własny adres (`/account/ktos/`), a to jedna strona
+# z jednym plikiem index.html — bez tej reguły wejście prosto pod taki adres
+# kończy się 404 (nawigacja wewnątrz aplikacji działa i bez niej).
+AliasMatch "^/account/[^/]+/?$" "${TRYHACKX_MEDIA_ROOT}/public/assets/build/account/index.html"
 
-RedirectMatch 302 ^/media-next$ /media-next/
-
-# Publiczny profil konta ma własny adres (/media-next/account/ktos/), a to jedna
-# strona z jednym plikiem index.html — bez tej reguły wejście prosto pod taki
-# adres kończy się 404 (nawigacja wewnątrz aplikacji działa i bez niej).
-AliasMatch "^/media-next/account/[^/]+/?$" "${TRYHACKX_MEDIA_ROOT}/public/assets/build/account/index.html"
-Alias "/media-next/" "${TRYHACKX_MEDIA_ROOT}/public/assets/build/"
 Alias "/media-next-api" "${TRYHACKX_MEDIA_ROOT}/integrations/php/stage/bridge.php"
 
+SetEnv TRYHACKX_BRIDGE_CONFIG "${TRYHACKX_BRIDGE_CONFIG}"
+
+# Nagłówki bezpieczeństwa przy **katalogu**, nie przy ścieżce URL: aplikacja stoi
+# pod `/`, więc `<Location "/">` objęłoby wszystko, co ten serwer wystawia —
+# łącznie z cudzymi aplikacjami, którym `default-src 'self'` popsułoby działanie.
 <Directory "${TRYHACKX_MEDIA_ROOT}/public/assets/build">
     Options -Indexes -ExecCGI -Includes
     AllowOverride None
     DirectoryIndex index.html
     Require all granted
+
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "DENY"
+    Header always set Referrer-Policy "no-referrer"
+    Header always set Permissions-Policy "camera=(), microphone=(), geolocation=()"
+    Header always set Content-Security-Policy "default-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'; object-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:"
 
     <FilesMatch "(^\.|\.(map|php|phtml|phar)$)">
         Require all denied
@@ -76,6 +90,13 @@ Alias "/media-next-api" "${TRYHACKX_MEDIA_ROOT}/integrations/php/stage/bridge.ph
     </Files>
 </Directory>
 
+# Strona logowania jako jedyna dociąga skrypt dostawcy CAPTCHA wybranego w panelu
+# (reCAPTCHA / hCaptcha / Turnstile), więc tylko tu polityka dopuszcza te źródła.
+# Bez tego bloku włączenie CAPTCHA w panelu blokuje logowanie wszystkim.
+<Directory "${TRYHACKX_MEDIA_ROOT}/public/assets/build/login">
+    Header always set Content-Security-Policy "default-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'; object-src 'none'; script-src 'self' https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/ https://hcaptcha.com https://*.hcaptcha.com https://challenges.cloudflare.com; style-src 'self' https://hcaptcha.com https://*.hcaptcha.com; connect-src 'self' https://hcaptcha.com https://*.hcaptcha.com; frame-src https://www.google.com/recaptcha/ https://recaptcha.google.com/recaptcha/ https://hcaptcha.com https://*.hcaptcha.com https://challenges.cloudflare.com; img-src 'self' data: blob:; media-src 'self' blob:"
+</Directory>
+
 <Directory "${TRYHACKX_MEDIA_ROOT}/integrations/php/stage">
     Options -Indexes -Includes
     AllowOverride None
@@ -86,23 +107,6 @@ Alias "/media-next-api" "${TRYHACKX_MEDIA_ROOT}/integrations/php/stage/bridge.ph
         Require all granted
     </Files>
 </Directory>
-
-SetEnv TRYHACKX_BRIDGE_CONFIG "${TRYHACKX_BRIDGE_CONFIG}"
-
-<LocationMatch "^/media-next(?:/|$)">
-    Header always set X-Content-Type-Options "nosniff"
-    Header always set X-Frame-Options "DENY"
-    Header always set Referrer-Policy "no-referrer"
-    Header always set Permissions-Policy "camera=(), microphone=(), geolocation=()"
-    Header always set Content-Security-Policy "default-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'; object-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:"
-</LocationMatch>
-
-# Strona logowania jako jedyna dociąga skrypt dostawcy CAPTCHA wybranego w panelu
-# (reCAPTCHA / hCaptcha / Turnstile), więc tylko tu polityka dopuszcza te źródła.
-# Bez tego bloku włączenie CAPTCHA w panelu blokuje logowanie wszystkim.
-<LocationMatch "^/media-next/login(?:/|$)">
-    Header always set Content-Security-Policy "default-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'; object-src 'none'; script-src 'self' https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/ https://hcaptcha.com https://*.hcaptcha.com https://challenges.cloudflare.com; style-src 'self' https://hcaptcha.com https://*.hcaptcha.com; connect-src 'self' https://hcaptcha.com https://*.hcaptcha.com; frame-src https://www.google.com/recaptcha/ https://recaptcha.google.com/recaptcha/ https://hcaptcha.com https://*.hcaptcha.com https://challenges.cloudflare.com; img-src 'self' data: blob:; media-src 'self' blob:"
-</LocationMatch>
 
 <Location "/media-next-api">
     Header always set Cache-Control "no-store"
@@ -117,23 +121,14 @@ SetEnv TRYHACKX_BRIDGE_CONFIG "${TRYHACKX_BRIDGE_CONFIG}"
 
 # ————— Wystawienie publiczne —————
 # Ten plik jest fragmentem konfiguracji, nie hostem wirtualnym: TLS, nazwę
-# serwera i przekierowanie z HTTP na HTTPS zapewnia host, do którego go
-# włączysz. Trzy rzeczy, bez których publiczna instalacja jest gorsza niż
-# lokalna:
+# serwera, DocumentRoot i przekierowanie z HTTP na HTTPS zapewnia host, do
+# którego go włączysz. Trzy rzeczy, bez których publiczna instalacja jest gorsza
+# niż lokalna — szczegóły w docs/PUBLIC-EXPOSURE.md:
 #
-# 1. **HTTPS**. Most odrzuca logowanie po zwykłym HTTP (422) — celowo, bo
-#    inaczej hasło i ciasteczko sesji lecą tekstem. Bez przekierowania z portu
-#    80 gość zobaczy aplikację, która ładuje się poprawnie i odbija każde
-#    kliknięcie; sam nie zgadnie, że brakuje litery „s".
-# 2. **HSTS** na hoście serwującym TLS, żeby zamknąć okno na cofnięcie się do
-#    HTTP: Header always set Strict-Transport-Security "max-age=31536000"
-# 3. **`[proxy] trusted`** w prywatnej konfiguracji, jeśli przed serwerem stoi
-#    reverse proxy — bez tego wszyscy goście mają adres proxy, więc limit prób
-#    logowania i CAPTCHA przestają kogokolwiek odróżniać, a most uzna ruch za
-#    nieszyfrowany i odmówi. Proxy musi przy tym **samo** ustawiać
-#    `X-Forwarded-For` i `X-Forwarded-Proto` i kasować to, co przysłał klient.
+# 1. **HTTPS**, bo most odrzuca logowanie po zwykłym HTTP (422).
+# 2. **HSTS** na hoście serwującym TLS.
+# 3. **`[proxy] trusted`**, jeśli przed serwerem stoi reverse proxy.
 #
 # I jedna, o której łatwo zapomnieć: **`[app] base_url` musi być pełnym
-# adresem** (`https://twoj.host/media-next/`), inaczej link aktywacyjny
-# w wysłanym mailu jest ścieżką względną, w której nikt nie kliknie — a bez
-# aktywacji nie da się dokończyć rejestracji.
+# adresem**, inaczej link aktywacyjny w mailu jest ścieżką względną, w której
+# nikt nie kliknie — a bez aktywacji nie da się dokończyć rejestracji.

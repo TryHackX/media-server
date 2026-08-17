@@ -3,20 +3,20 @@
   "short_name": "Media",
   "description": "Domowa biblioteka muzyki i filmów.",
   "lang": "pl",
-  "start_url": "/media-next/",
-  "scope": "/media-next/",
-  "id": "/media-next/",
+  "start_url": "./",
+  "scope": "./",
+  "id": "./",
   "display": "standalone",
   "orientation": "any",
   "background_color": "#0b0f14",
   "theme_color": "#0b0f14",
   "icons": [
-    { "src": "/media-next/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "/media-next/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "/media-next/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    { "src": "./icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "./icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "./icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
   "shortcuts": [
-    { "name": "Muzyka", "url": "/media-next/music/" },
-    { "name": "Filmy", "url": "/media-next/movies/" }
+    { "name": "Muzyka", "url": "./music/" },
+    { "name": "Filmy", "url": "./movies/" }
   ]
 }

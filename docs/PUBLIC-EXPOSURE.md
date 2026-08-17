@@ -10,6 +10,13 @@ trzeba zmienić w każdym — łącznie z tym, czego **nie** wolno zostawić po 
 | **B. Wprost, publiczny adres** | ten Apache | adres tego serwera |
 | **C. Tylko localhost** | nic albo ten Apache | nic — dostęp z tej maszyny |
 
+**Aplikacja stoi pod głównym adresem.** `https://twoj.host/` prowadzi wprost do
+biblioteki — nie ma podkatalogu do dopisywania. Odpowiada za to `DocumentRoot`
+hosta wirtualnego wskazujący na `public/assets/build`, a nie alias: `Alias "/"`
+przykryłby wszystkie pozostałe aliasy na serwerze. Instalacja pod podkatalogiem
+jest nadal możliwa i wymaga zbudowania frontu z tą samą ścieżką:
+`MEDIA_APP_BASE=/media-next/ npm run build`.
+
 **Kształt B jest domyślny w tym repozytorium.** Ktoś, kto sklonuje projekt
 i postawi go na własnym VPS-ie z normalnym certyfikatem, nie musi robić nic
 z proxy: `[proxy] trusted` zostaje puste, nagłówki `X-Forwarded-*` nie są wtedy
@@ -30,14 +37,14 @@ zdąży wysłać ciasteczko, zanim przekierowanie zadziała:
 Header always set Strict-Transport-Security "max-age=31536000"
 ```
 
-**3. `[app] base_url` jako pełny adres.** Domyślnie jest to ścieżka względna
-(`/media-next/`), a link aktywacyjny idzie **e-mailem** — w ścieżce względnej
-nikt nie kliknie, więc rejestracji nie da się dokończyć. To najczęstszy sposób,
-w jaki publiczna instalacja „działa", a mimo to nikt nowy się nie zarejestruje.
+**3. `[app] base_url` jako pełny adres.** Domyślnie jest to sama ścieżka, a link
+aktywacyjny idzie **e-mailem** — w ścieżce względnej nikt nie kliknie, więc
+rejestracji nie da się dokończyć. To najczęstszy sposób, w jaki publiczna
+instalacja „działa", a mimo to nikt nowy się nie zarejestruje.
 
 ```toml
 [app]
-base_url = "https://twoj.host/media-next/"
+base_url = "https://twoj.host/"
 ```
 
 ## Kształt A: za reverse proxy
@@ -113,8 +120,8 @@ wprost oznaczałoby oddanie plików bez Apache i bez tokenów — nie rób tego.
 
 ## Zanim uznasz, że działa
 
-1. `https://twoj.host/media-next/` ładuje się i **pozwala się zalogować**.
-2. `http://twoj.host/media-next/` **przekierowuje** na HTTPS, a nie pokazuje
+1. `https://twoj.host/` ładuje się i **pozwala się zalogować**.
+2. `http://twoj.host/` **przekierowuje** na HTTPS, a nie pokazuje
    aplikacji, która odbija każde kliknięcie.
 3. Utwór **gra**, a plik **się pobiera** (to sprawdza `/media-transfer/`).
 4. `https://twoj.host/media-transfer/health/ready` oddaje **403 albo 404**,
