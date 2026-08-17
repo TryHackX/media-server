@@ -1,11 +1,23 @@
-# Lokalne wdrożenie przejściowe dla WAMP. Nie udostępnia stagingu w sieci LAN.
+# Wdrożenie dla WAMP — od 17.08.2026 **wystawione publicznie**.
 # Aktywacja: skopiuj ten plik do C:/wamp64/alias/media-next-stage.conf,
 # sprawdź httpd -t i dopiero potem przeładuj usługę Apache.
+#
+# Ruch z zewnątrz przychodzi przez VPS-proxy (home.tryhackx.org): to ono kończy
+# pierwszy odcinek TLS, podaje `X-Forwarded-For`/`X-Forwarded-Proto` i samo
+# przekierowuje HTTP na HTTPS. Adres proxy musi być wpisany w prywatnej
+# konfiguracji jako `[proxy] trusted` — inaczej limit prób logowania i CAPTCHA
+# widzą wszystkich gości jako jeden adres i przestają cokolwiek chronić.
 #
 # Jedyne miejsce ze ścieżką drzewa projektu. Po przeniesieniu repozytorium poza
 # DocumentRoot (docs/INSTALL-WINDOWS.md, „Przeniesienie poza DocumentRoot") zmień
 # wyłącznie tę linię, wykonaj httpd -t i przeładuj Apache.
 Define TRYHACKX_MEDIA_ROOT "C:/wamp64/media-server"
+
+# Wejście pod gołym adresem prowadzi prosto do biblioteki, żeby nie trzeba było
+# dopisywać ścieżki. Wzorzec łapie **wyłącznie** `/` — pozostałe aliasy tego
+# Apache (adminer, phpMyAdmin, phpSysInfo) i cokolwiek innego w DocumentRoot
+# działa dalej bez zmian. Usuń tę linię, jeśli pod `/` ma stać coś innego.
+RedirectMatch 302 ^/$ /media-next/
 
 RedirectMatch 302 ^/media-next$ /media-next/
 AliasMatch "^/media-next/account/[^/]+/?$" "${TRYHACKX_MEDIA_ROOT}/public/assets/build/account/index.html"
@@ -19,7 +31,7 @@ SetEnv TRYHACKX_BRIDGE_ALLOW_HTTP_LOCAL "1"
     Options -Indexes -ExecCGI -Includes
     AllowOverride None
     DirectoryIndex index.html
-    Require local
+    Require all granted
 
     <FilesMatch "(^\.|\.(map|php|phtml|phar)$)">
         Require all denied
@@ -56,7 +68,7 @@ SetEnv TRYHACKX_BRIDGE_ALLOW_HTTP_LOCAL "1"
 
     <Files "bridge.php">
         AcceptPathInfo Off
-        Require local
+        Require all granted
     </Files>
 </Directory>
 
@@ -68,7 +80,7 @@ SetEnv TRYHACKX_BRIDGE_ALLOW_HTTP_LOCAL "1"
 </LocationMatch>
 
 <LocationMatch "^/media-next(?:/|$)">
-    Require local
+    Require all granted
     Header always set X-Content-Type-Options "nosniff"
     Header always set X-Frame-Options "DENY"
     Header always set Referrer-Policy "no-referrer"
@@ -84,7 +96,7 @@ SetEnv TRYHACKX_BRIDGE_ALLOW_HTTP_LOCAL "1"
 </LocationMatch>
 
 <LocationMatch "^/media-next-api$">
-    Require local
+    Require all granted
     Header always set Cache-Control "no-store"
     Header always set X-Content-Type-Options "nosniff"
     Header always set X-Frame-Options "DENY"
@@ -95,8 +107,16 @@ SetEnv TRYHACKX_BRIDGE_ALLOW_HTTP_LOCAL "1"
 ProxyPass "/media-transfer/" "http://127.0.0.1:8765/" connectiontimeout=3 timeout=3600 nocanon
 ProxyPassReverse "/media-transfer/" "http://127.0.0.1:8765/"
 
+# Zdrowie usługi i zlecanie zadań nie mają prawa być osiągalne z zewnątrz —
+# **osobną regułą**, żeby otwarcie tras transferu nie mogło otworzyć i tych.
+# Trasy transferu chroni podpisany token o krótkim czasie życia, wydawany przez
+# most po sprawdzeniu sesji; te tutaj nie mają czego chronić poza tą regułą.
+<LocationMatch "^/media-transfer/(health|v1/catalog-scan|v1/metadata-worker|v1/subtitle-cache|v1/stats)">
+    Require all denied
+</LocationMatch>
+
 <LocationMatch "^/media-transfer(?:/|$)">
-    Require local
+    Require all granted
     Header always set X-Content-Type-Options "nosniff"
     Header always set X-Frame-Options "DENY"
 </LocationMatch>

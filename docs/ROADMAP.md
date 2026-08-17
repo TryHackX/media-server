@@ -35,16 +35,24 @@ Stan każdego punktu sprawdzony w kodzie i na dysku, nie przyjęty na słowo.
       i publiczny, `/media-transfer/` da się otworzyć (inaczej nic nie zagra), a zdrowie
       i zlecenia zadań są zamknięte osobną regułą. Brakujące `Define` wywalają teraz `configtest`
       zamiast cicho przechodzić.
-- [ ] **Samo przełączenie na `home.tryhackx.org`** — wymaga infrastruktury właściciela i **nie
-      da się zrobić wcześniej**, bo to jest ten krok, który otwiera dostęp. Do zrobienia razem:
-      zdjęcie **pięciu** `Require local` (`C:\wamp64\alias\media-next-stage.conf`, linie 22, 59,
-      71, 87, 99) i `SetEnv TRYHACKX_BRIDGE_ALLOW_HTTP_LOCAL` (linia 16), otwarcie
-      `/media-transfer/`, wpisanie adresu proxy do `[proxy] trusted`, pełny `[app] base_url`,
-      przekierowanie z portu 80 i HSTS po stronie proxy. Sprawdzone: DNS `home.tryhackx.org`
-      wskazuje na VPS, nie na łącze domowe.
+- [x] **Konfiguracja cutoveru przygotowana** (17.08.2026) — pięć `Require local` zamienionych na
+      `Require all granted`, dołożona **osobna** reguła zamykająca zdrowie i zlecenia zadań
+      usługi transferowej, wejście pod gołym `/` prowadzi do biblioteki, a `[proxy] trusted`
+      ma adresy VPS-a. Plik jest w `C:\wamp64\alias\media-next-stage.conf`, `httpd -t` przechodzi.
+      **`SetEnv TRYHACKX_BRIDGE_ALLOW_HTTP_LOCAL` zostaje** — wbrew temu, co tu wcześniej stało:
+      dopuszcza zwykłe HTTP **wyłącznie z pętli zwrotnej**, więc bez niej zepsułby się localhost,
+      a gość z zewnątrz (peer = VPS) i tak musi mieć HTTPS.
+- [ ] **Przeładowanie Apache przez właściciela** — do tej chwili nic z powyższego nie działa.
+      To jest moment, w którym dostęp naprawdę się otwiera.
 - [ ] **Smoke test po przełączeniu** — sześć punktów kontrolnych na końcu `PUBLIC-EXPOSURE.md`.
       Punkt „procedura powrotu do starych tras" odpada: nie ma już starych tras, a jedyne
       wycofanie to zrzut SQL plus starsze wydanie z gita.
+
+**Topologia sprawdzona empirycznie 17.08.2026**, bo różni się od pierwotnego założenia: TLS
+kończy się **na tej maszynie** (`_default_:443`, `fullchain.pem`), a VPS jest proxy HTTP —
+`REMOTE_ADDR` to `[adres w prywatnej konfiguracji]`, `HTTPS=on`, `X-Forwarded-For` i `X-Forwarded-Proto` ustawione,
+przekierowanie z portu 80 na HTTPS robi już samo proxy. DNS `home.tryhackx.org` wskazuje na VPS,
+łącze domowe ma inny adres.
 
 ## Długi techniczne
 

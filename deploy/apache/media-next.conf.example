@@ -28,6 +28,13 @@
     Error "media-next.conf: TRYHACKX_BRIDGE_CONFIG is not set. Uncomment the Define above and point it at the private configuration."
 </IfDefine>
 
+# Odkomentuj, jeśli ten serwer jest **tylko** dla biblioteki: wejście pod gołym
+# adresem (`https://twoj.host/`) prowadzi wtedy prosto do niej, bez dopisywania
+# ścieżki. Wzorzec łapie wyłącznie `/`, więc nic innego nie zostaje przykryte —
+# ale domyślnie jest wyłączony, bo ten plik może trafić na serwer, który pod
+# głównym adresem ma już własną stronę.
+# RedirectMatch 302 ^/$ /media-next/
+
 RedirectMatch 302 ^/media-next$ /media-next/
 
 # Publiczny profil konta ma własny adres (/media-next/account/ktos/), a to jedna
