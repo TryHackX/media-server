@@ -2,6 +2,11 @@
 # Repozytorium powinno leżeć poza DocumentRoot. W WAMP nie wskazuj obecnego
 # C:/wamp64/media-server, dopóki cały projekt nie zostanie przeniesiony.
 #
+# Ustaw obie ścieżki — bez nich nic nie zadziała, a Apache **nie** zgłosi błędu
+# sam z siebie: nierozwinięte `${…}` trafiłoby do ścieżek jako zwykły tekst,
+# `configtest` powiedziałby „Syntax OK", a aplikacja oddawałaby 404. Dlatego
+# niżej stoi jawna asercja.
+#
 # Windows, przykład:
 # Define TRYHACKX_MEDIA_ROOT "C:/ProgramData/TryHackX/media-server"
 # Define TRYHACKX_BRIDGE_CONFIG "C:/ProgramData/TryHackX/config/bridge.local.php"
@@ -12,6 +17,16 @@
 # Na Debianie plik trafia do /etc/apache2/conf-available/media-next.conf i włącza
 # go `a2enconf media-next`. `current` jest dowiązaniem przełączanym przez
 # scripts/release-debian.sh, więc aktualizacja aplikacji nie dotyka Apache.
+
+# Komunikaty po angielsku i bez znakow spoza ASCII: Apache wypisuje je bajt
+# w bajt, wiec polskie litery zamienilyby sie w krzaki dokladnie w chwili,
+# w ktorej ktos musi je przeczytac.
+<IfDefine !TRYHACKX_MEDIA_ROOT>
+    Error "media-next.conf: TRYHACKX_MEDIA_ROOT is not set. Uncomment the Define above and point it at the application tree."
+</IfDefine>
+<IfDefine !TRYHACKX_BRIDGE_CONFIG>
+    Error "media-next.conf: TRYHACKX_BRIDGE_CONFIG is not set. Uncomment the Define above and point it at the private configuration."
+</IfDefine>
 
 RedirectMatch 302 ^/media-next$ /media-next/
 
@@ -88,5 +103,30 @@ SetEnv TRYHACKX_BRIDGE_CONFIG "${TRYHACKX_BRIDGE_CONFIG}"
     Header always set X-Frame-Options "DENY"
 </Location>
 
-# Osobny deploy/apache/media-transfer.conf.example dodaje /media-transfer/.
-# Żaden z tych plików nie zwiększa Timeout Apache ani limitu czasu PHP.
+# Osobny deploy/apache/media-transfer.conf.example dodaje /media-transfer/ —
+# **jest wymagany**, inaczej biblioteka się wyświetla, ale nic nie zagra ani
+# się nie pobierze. Żaden z tych plików nie zwiększa Timeout Apache ani limitu
+# czasu PHP.
+
+# ————— Wystawienie publiczne —————
+# Ten plik jest fragmentem konfiguracji, nie hostem wirtualnym: TLS, nazwę
+# serwera i przekierowanie z HTTP na HTTPS zapewnia host, do którego go
+# włączysz. Trzy rzeczy, bez których publiczna instalacja jest gorsza niż
+# lokalna:
+#
+# 1. **HTTPS**. Most odrzuca logowanie po zwykłym HTTP (422) — celowo, bo
+#    inaczej hasło i ciasteczko sesji lecą tekstem. Bez przekierowania z portu
+#    80 gość zobaczy aplikację, która ładuje się poprawnie i odbija każde
+#    kliknięcie; sam nie zgadnie, że brakuje litery „s".
+# 2. **HSTS** na hoście serwującym TLS, żeby zamknąć okno na cofnięcie się do
+#    HTTP: Header always set Strict-Transport-Security "max-age=31536000"
+# 3. **`[proxy] trusted`** w prywatnej konfiguracji, jeśli przed serwerem stoi
+#    reverse proxy — bez tego wszyscy goście mają adres proxy, więc limit prób
+#    logowania i CAPTCHA przestają kogokolwiek odróżniać, a most uzna ruch za
+#    nieszyfrowany i odmówi. Proxy musi przy tym **samo** ustawiać
+#    `X-Forwarded-For` i `X-Forwarded-Proto` i kasować to, co przysłał klient.
+#
+# I jedna, o której łatwo zapomnieć: **`[app] base_url` musi być pełnym
+# adresem** (`https://twoj.host/media-next/`), inaczej link aktywacyjny
+# w wysłanym mailu jest ścieżką względną, w której nikt nie kliknie — a bez
+# aktywacji nie da się dokończyć rejestracji.

@@ -1,26 +1,37 @@
-# Włącz raz: proxy, proxy_http, headers oraz rewrite.
-# Ta trasa nie zmienia globalnych Timeout ani limitów PHP — limit czasu jest
-# ustawiony na samym ProxyPass, więc dotyczy wyłącznie tej ścieżki.
+# Trasa, którą lecą bajty: strumienie, pobrania i ZIP-y. Wymaga raz włączonych
+# modułów proxy, proxy_http i headers.
 #
-# `timeout=3600` jest tu obowiązkowe: bez niego film albo ZIP przerywa się po
-# domyślnym Timeout Apache (60 s), bo to jedno długie żądanie, a nie seria
-# krótkich. `nocanon` przekazuje adres bez normalizacji — w ścieżce transferu
-# siedzi token i przepisanie znaków zmieniłoby podpis.
+# `timeout=3600` jest obowiązkowe: film albo ZIP to jedno długie żądanie, więc
+# bez tego przerywałoby się po domyślnym `Timeout` Apache (60 s). `nocanon`
+# przekazuje adres bez normalizacji — w ścieżce transferu siedzi token i
+# przepisanie znaków zmieniłoby podpis. Żaden z tych parametrów nie zmienia
+# globalnych limitów Apache ani PHP.
 ProxyPass        /media-transfer/ http://127.0.0.1:8765/ connectiontimeout=5 timeout=3600 retry=0 nocanon
 ProxyPassReverse /media-transfer/ http://127.0.0.1:8765/
 
-<Location /media-transfer/>
-    ProxyPreserveHost Off
-    RequestHeader unset Proxy early
-    Header always set X-Content-Type-Options "nosniff"
-    # Proxied locations do not inherit <Directory> defaults, so state access
-    # control explicitly. Keep loopback-only until the M7 HTTPS/LAN cutover
-    # replaces this with the intended authenticated exposure.
-    Require local
-</Location>
-
-# The health and internal job endpoints must never be reachable through the
-# proxy; only the token-guarded transfer paths are.
-<LocationMatch "^/media-transfer/(health|v1/catalog-scan|v1/subtitle-cache)">
+# Zdrowie i zlecenia zadań nie mają prawa być osiągalne z zewnątrz nigdy —
+# niezależnie od tego, jak szeroko otwarta jest reguła niżej. Wewnętrzne trasy
+# usługi chroni dodatkowo klucz, ale zamknięcie ich tutaj znaczy, że nikt spoza
+# tej maszyny nawet nie dowie się, że istnieją.
+<LocationMatch "^/media-transfer/(health|v1/catalog-scan|v1/metadata-worker|v1/subtitle-cache|v1/stats)">
     Require all denied
 </LocationMatch>
+
+<Location /media-transfer/>
+    ProxyPreserveHost Off
+    # Nagłówki, którymi klient mógłby udawać, że przyszedł skądinąd. Ustawia je
+    # wyłącznie nasze proxy — to, co przyszło od gościa, ginie tutaj.
+    RequestHeader unset Proxy early
+    Header always set X-Content-Type-Options "nosniff"
+
+    # ————— WYBIERZ JEDNO —————
+    # (1) Tylko ta maszyna — instalacja domowa bez wystawienia na zewnątrz.
+    Require local
+    #
+    # (2) Wystawione publicznie (wprost albo zza reverse proxy). Trasy transferu
+    #     są chronione **podpisanym tokenem o krótkim czasie życia**, wydawanym
+    #     przez most po sprawdzeniu sesji, więc otwarcie ich jest zamierzone:
+    #     bez tokenu żądanie i tak kończy się odmową. Bez tej zmiany gość widzi
+    #     bibliotekę, ale **każde odtworzenie i pobranie dostaje 403**.
+    # Require all granted
+</Location>

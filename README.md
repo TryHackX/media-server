@@ -5,8 +5,9 @@ interface for a music and a movie library. Python streams the bytes, PHP holds t
 the short API, TypeScript renders the interface. The interface language is Polish; the code and
 the documentation are English.
 
-> Status: staging. The service runs at `/media-next/` on localhost while the previous system in
-> `C:\wamp64\www` stays untouched as an immediate rollback.
+> Status: released and in use. The reference installation runs on localhost; exposing it to a
+> network — directly or behind a reverse proxy — is described in
+> [docs/PUBLIC-EXPOSURE.md](docs/PUBLIC-EXPOSURE.md).
 
 ## What it does
 
@@ -97,6 +98,7 @@ python scripts/lock-deps.py        # refresh requirements*.lock (needs uv)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Windows + WAMP install](docs/INSTALL-WINDOWS.md)
 - [Debian 13 install](docs/INSTALL-DEBIAN.md)
+- [Exposing it publicly](docs/PUBLIC-EXPOSURE.md)
 - [Roadmap](docs/ROADMAP.md) · [Changelog](docs/CHANGELOG.md)
 - [Catalogue worker](docs/CATALOG-WORKER.md)
 - [Shared frontend](docs/FRONTEND.md)
