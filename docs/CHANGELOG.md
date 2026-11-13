@@ -4,6 +4,14 @@ Zamknięte etapy i serie zmian. Roadmapy już nie ma (wycofana 09.11.2026, gdy w
 zrobione): świadome decyzje projektowe opisuje `ARCHITECTURE.md`, a rzeczy niemożliwe do zrobienia
 wiernie — z powodem — `FRONTEND.md`.
 
+## 13.11.2026 (7) — Poradniki: instalacja z paczki albo z GitHuba krok po kroku
+
+Tylko dokumentacja, po wydaniu 1.0.0. W `INSTALL-WINDOWS.md` (punkt 3) i `INSTALL-DEBIAN.md`
+(punkt 2) jeden długi akapit zastąpiły dwie drogi: paczka wydania (bez gita, budowania i Node.js)
+albo klon z GitHuba z gotowymi poleceniami — klon kodu, klon paczek do
+`media-server/frontend/vendor`, instalator, który sam buduje interfejs — i z tym, co każde polecenie
+robi, kiedy jest potrzebne i jak potem aktualizować.
+
 ## 13.11.2026 (6) — **1.0.0**: pierwsze wydanie w nowym repozytorium; z klona interfejs buduje się przy każdej instalacji i aktualizacji
 
 Wersja **1.0.0** (`pyproject.toml`, `media_server.__version__`, `frontend/package.json` i oba wpisy

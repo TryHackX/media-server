@@ -18,29 +18,40 @@ zdobywa certyfikatu Let's Encrypt.
 2. **Python 3.11+** (64-bit) i — dla miniatur, danych o filmach, napisów obrazkowych i trybu
    zgodnego — **FFmpeg**. Jeśli ich nie ma, kreator pokaże przycisk „Zainstaluj (winget)”,
    odnośnik do oficjalnej strony albo pozwoli wskazać istniejący `ffmpeg.exe`.
-3. **Paczka wydania** `TryHackX-Media-Server-<wersja>-windows.zip`, rozpakowana w całości
-   (przed rozpakowaniem: Właściwości pliku ZIP → „Odblokuj”, inaczej Windows zapyta o zgodę
-   przy pierwszym uruchomieniu). Zawiera gotowy front — Node.js nie jest potrzebny.
-   **Albo klon repozytorium** (`git clone https://github.com/TryHackX/media-server.git`; `git`
-   z Git for Windows — `winget install --id Git.Git -e`): nie ma w nim zbudowanego frontu, więc
-   kreator buduje go sam przed instalacją (`npm ci`, `npm run build` w `frontend\`; kilka minut,
-   pakiety z npm) — za każdym razem, także przy aktualizacji, więc po `git pull` instaluje się front
-   pobranego kodu, nawet gdy w klonie leży starszy build. Potrzebny jest do tego **Node.js** 20.19+
-   albo 22.12+ — wersja LTS; gdy go nie ma, strona wymagań pokaże „Zainstaluj (winget)”
-   (`OpenJS.NodeJS.LTS`). Paczki, których repozytorium nie ma (presety AVS i MilkDropa, tekstury,
-   shadery, Font Awesome Pro — `FRONTEND.md`), są w prywatnym repozytorium
-   [media-server-vendor](https://github.com/TryHackX/media-server-vendor) (dostęp tylko dla kont,
-   którym je udostępniono). Klonujesz je przed instalacją do `frontend\vendor`:
-   `git clone https://github.com/TryHackX/media-server-vendor.git frontend\vendor` (pierwsze
-   klonowanie otworzy logowanie do GitHuba w przeglądarce; wcześniej raz
-   `git config --global core.longpaths true` — nazwy niektórych presetów MilkDropa mają do 210
-   znaków poniżej `frontend\vendor`, a bez tego klon w głębszym folderze kończy się
-   „Filename too long”) — albo pobierasz „Code → Download ZIP”
-   i rozpakowujesz tak, żeby foldery paczek (`avs-presets`, `fontawesome-pro`…) leżały wprost
-   w `frontend\vendor`. Wejdą do zbudowanego frontu, a strona wymagań wymieni je z nazwy. Do
-   instalacji trafia gotowy front — folder `frontend\` (źródła, paczki, `node_modules`) zostaje
-   w klonie. Aktualizacja z klonów: `git pull` i `git -C frontend\vendor pull`, potem
-   `Zainstaluj.cmd` z klona → **Aktualizacja**.
+3. **Program — jedna z dwóch dróg** (wynik ten sam):
+   - **Paczka wydania** `TryHackX-Media-Server-<wersja>-windows.zip` (strona *Releases* na
+     GitHubie), rozpakowana w całości — przed rozpakowaniem: Właściwości pliku ZIP → „Odblokuj”,
+     inaczej Windows zapyta o zgodę przy pierwszym uruchomieniu. Zawiera gotowy front: bez gita,
+     bez budowania, bez Node.js. Uruchamiasz `Zainstaluj.cmd` z rozpakowanego folderu.
+   - **Klon z GitHuba.** Kreator sam zbuduje front przed instalacją (`npm ci`, `npm run build`;
+     kilka minut, pakiety z npm) — za każdym razem, także przy aktualizacji, więc po `git pull`
+     instaluje się front pobranego kodu. Potrzebny jest **Node.js** 20.19+ albo 22.12+ (LTS);
+     gdy go nie ma, strona wymagań pokaże „Zainstaluj (winget)” (`OpenJS.NodeJS.LTS`). W PowerShellu,
+     w folderze, w którym ma leżeć klon (np. `C:\`):
+
+     ```powershell
+     winget install --id Git.Git -e
+     git config --global core.longpaths true
+     git clone https://github.com/TryHackX/media-server.git
+     git clone https://github.com/TryHackX/media-server-vendor.git media-server/frontend/vendor
+     .\media-server\Zainstaluj.cmd
+     ```
+
+     - pierwsze polecenie tylko wtedy, gdy nie ma gita; drugie raz na komputer — nazwy
+       niektórych presetów MilkDropa mają do 210 znaków poniżej `frontend\vendor`, a bez tego klon
+       w głębszym folderze kończy się „Filename too long”;
+     - czwarte to paczki, których repozytorium nie ma (presety AVS i MilkDropa, tekstury, shadery,
+       Font Awesome Pro — `FRONTEND.md`), z prywatnego repozytorium
+       [media-server-vendor](https://github.com/TryHackX/media-server-vendor) — tylko z dostępem do
+       niego; pierwsze klonowanie otworzy logowanie do GitHuba. Bez niego powstaje front
+       publiczny. Zamiast gita: „Code → Download ZIP” i rozpakowanie tak, żeby foldery paczek
+       (`avs-presets`, `fontawesome-pro`…) leżały wprost w `frontend\vendor`;
+     - strona wymagań wymieni paczki z nazwy, a pierwszy krok instalacji to „Zbudowanie
+       interfejsu”; do instalacji trafia gotowy front — folder `frontend\` (źródła, paczki,
+       `node_modules`) zostaje w klonie.
+
+     Aktualizacja z klonów: `git -C media-server pull` i `git -C media-server/frontend/vendor pull`,
+     potem `Zainstaluj.cmd` z klona → **Aktualizacja**.
 
 ### Uruchomienie
 

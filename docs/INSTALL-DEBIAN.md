@@ -28,20 +28,31 @@ pakietów Debiana.
    z PyPI) i systemd. Na innym wydaniu instalator ostrzega i pyta, czy iść dalej. Debian
    zainstalowany z hasłem roota nie ma `sudo`: wtedy `su -` (z myślnikiem — pełne środowisko
    roota) i `bash zainstaluj-debian.sh`.
-2. **Paczka wydania** `TryHackX-Media-Server-<wersja>-debian.tar.gz`, rozpakowana w całości.
-   Zawiera gotowy interfejs — Node.js nie jest potrzebny. Klon repozytorium też wystarczy
-   (`sudo apt install git`, `git clone https://github.com/TryHackX/media-server.git`): instalator
-   zapyta wtedy o zgodę na doinstalowanie Node.js i npm z pakietów Debiana i zbuduje interfejs
-   w katalogu wydania — przy każdej instalacji i aktualizacji, więc po `git pull` wchodzi interfejs
-   pobranego kodu. Paczki, których repozytorium nie ma (presety AVS i MilkDropa, tekstury, shadery,
-   Font Awesome Pro — `FRONTEND.md`), są w prywatnym repozytorium
-   [media-server-vendor](https://github.com/TryHackX/media-server-vendor) (dostęp tylko dla kont,
-   którym je udostępniono). Klonujesz je przed instalacją:
-   `git clone https://github.com/TryHackX/media-server-vendor.git frontend/vendor` — GitHub zapyta
-   o nazwę użytkownika i zamiast hasła o token (*fine-grained personal access token* tylko do tego
-   repozytorium, *Contents: Read-only*). Pytanie o budowanie wymienia paczki z nazwy, a zbudowany
-   interfejs je ma. Aktualizacja z klonów: `git pull`, `git -C frontend/vendor pull`, potem
-   `sudo bash zainstaluj-debian.sh --zmien aktualizacja`.
+2. **Program — jedna z dwóch dróg** (wynik ten sam):
+   - **Paczka wydania** `TryHackX-Media-Server-<wersja>-debian.tar.gz` (strona *Releases* na
+     GitHubie), rozpakowana w całości. Zawiera gotowy interfejs: bez gita, bez budowania, bez
+     Node.js. Uruchamiasz `sudo bash zainstaluj-debian.sh` w rozpakowanym folderze.
+   - **Klon z GitHuba.** Instalator zapyta o zgodę na Node.js i npm z pakietów Debiana i sam
+     zbuduje interfejs w katalogu wydania — przy każdej instalacji i aktualizacji, więc po
+     `git pull` wchodzi interfejs pobranego kodu:
+
+     ```bash
+     sudo apt install git
+     git clone https://github.com/TryHackX/media-server.git
+     git clone https://github.com/TryHackX/media-server-vendor.git media-server/frontend/vendor
+     cd media-server && sudo bash zainstaluj-debian.sh
+     ```
+
+     - trzecie polecenie to paczki, których repozytorium nie ma (presety AVS i MilkDropa,
+       tekstury, shadery, Font Awesome Pro — `FRONTEND.md`), z prywatnego repozytorium
+       [media-server-vendor](https://github.com/TryHackX/media-server-vendor) — tylko z dostępem do
+       niego. GitHub zapyta o nazwę użytkownika i zamiast hasła o token (*fine-grained personal
+       access token* tylko do tego repozytorium, *Contents: Read-only*). Bez niego powstaje
+       interfejs publiczny;
+     - pytanie o budowanie wymienia paczki z nazwy, a zbudowany interfejs je ma.
+
+     Aktualizacja z klonów: `git -C media-server pull`, `git -C media-server/frontend/vendor pull`,
+     potem w folderze `media-server` `sudo bash zainstaluj-debian.sh --zmien aktualizacja`.
 3. **Foldery z mediami poza `/home` i `/root`** (np. `/srv/media/...`), czytelne dla konta
    `www-data`. Usługa działa z `ProtectHome=true` i tych katalogów po prostu nie widzi —
    instalator odmawia takiej ścieżki od razu, zamiast pozwolić na serwer, który „działa”
