@@ -1,0 +1,426 @@
+/* Account and administration panels — layout, 07.11.2026.
+
+   Imported after refinements.css on purpose: these rules replace older ones
+   rather than adjusting them, and in the same layer the later rule wins. Each
+   block says what it replaced, so the older rule can be deleted with it. */
+
+@layer pages {
+  /* Section headings: title, then its description underneath.
+     The description used to sit to the right of the title and took the larger
+     share of the row, so the title wrapped instead — "Aktywne / sesje",
+     "Ustawienia biblioteki / i odtwarzacza" — at every width below a wide
+     desktop. Stacked, the title keeps its line and the text reads left to right
+     like every other paragraph. */
+  .section-heading {
+    display: grid;
+    justify-items: start;
+    gap: var(--space-2);
+  }
+
+  .section-heading > p {
+    max-width: 68ch;
+    color: var(--color-text-muted);
+    font-size: 0.86rem;
+    text-align: start;
+  }
+
+  /* Tiles that come in fours (account numbers, account overview in the admin
+     panel): four in a row when each gets at least --tile-min, otherwise two by
+     two — never three and an orphan, which is what auto-fit produced between
+     those widths. The track minimum switches between a quarter and a half of the
+     row: (min - quarter) * 1000 is hugely positive once a quarter is too small,
+     so the clamp lands on the half; it is zero or below while a quarter is big
+     enough, so it stays on the quarter. 0.1px keeps rounding from losing a
+     column. */
+  .account-stats,
+  .admin-metrics--quad {
+    --tile-min: 10.5rem;
+    --tile-quarter: calc((100% - 3 * var(--space-4)) / 4 - 0.1px);
+    --tile-half: calc((100% - var(--space-4)) / 2 - 0.1px);
+    display: grid;
+    grid-template-columns: repeat(
+      auto-fill,
+      minmax(clamp(var(--tile-quarter), (var(--tile-min) - var(--tile-quarter)) * 1000, var(--tile-half)), 1fr)
+    );
+    gap: var(--space-4);
+  }
+
+  /* Rows of five or six (server statistics): as many as fit, and the last row's
+     tiles share its width instead of leaving a hole. */
+  .admin-metrics:not(.admin-metrics--quad) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-4);
+  }
+
+  .admin-metrics:not(.admin-metrics--quad) > * {
+    flex: 1 1 11rem;
+  }
+
+  /* A phone: two a row, like the tiles that come in fours. Their rule in
+     admin.css sets grid columns, which a flex row does not have — so these came
+     one to a row, 274 px each, and five statistics cost a screen. */
+  @media (max-width: 34rem) {
+    .admin-metrics:not(.admin-metrics--quad) {
+      gap: var(--space-3);
+    }
+
+    .admin-metrics:not(.admin-metrics--quad) > * {
+      flex: 1 1 calc(50% - var(--space-3));
+      min-width: 0;
+    }
+  }
+
+  .account-stat {
+    padding: var(--space-4);
+  }
+
+  /* Profile header: who, then what you can do with it.
+     A three-column grid stretched "Udostępnij profil" across a third of the
+     page. */
+  .account-profile {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3) var(--space-5);
+    padding: var(--space-4) var(--space-5);
+  }
+
+  .account-profile__identity {
+    display: flex;
+    min-width: 0;
+    flex: 1 1 14rem;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  .account-profile__identity h2 {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .account-profile__avatar {
+    display: grid;
+    width: 3rem;
+    height: 3rem;
+    flex: 0 0 auto;
+    place-items: center;
+    border: 1px solid rgb(var(--color-accent-rgb) / 35%);
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 25%, rgb(var(--color-accent-rgb) / 28%), rgb(var(--color-accent-rgb) / 8%));
+    color: var(--color-accent);
+    font-size: 1.2rem;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+
+  .account-profile > .button {
+    flex: 0 0 auto;
+  }
+
+  .account-profile__browser {
+    flex: 1 1 22rem;
+    max-width: 36rem;
+  }
+
+  /* Settings side by side where there is room for two, each panel as tall as
+     its own content. */
+  .account-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 24rem), 1fr));
+    align-items: start;
+    gap: var(--space-5);
+  }
+
+  /* A select or a short field is as wide as what it holds, not the panel. */
+  .account-preferences__options,
+  .admin-settings__icon-fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 20rem));
+    gap: var(--space-3) var(--space-4);
+  }
+
+  /* Activity lists: each as tall as it is. A fixed 28rem minimum gave an empty
+     "Ulubione" the height of a full one, and three of them made the page. */
+  .account-columns {
+    --tile-third: calc((100% - 2 * var(--space-5)) / 3 - 0.1px);
+    /* Three lists side by side while a third of the row is at least 13rem,
+       otherwise one under another — never two and a stray third. */
+    grid-template-columns: repeat(auto-fill, minmax(clamp(var(--tile-third), (13rem - var(--tile-third)) * 1000, 100%), 1fr));
+    align-items: start;
+  }
+
+  .account-panel--entries {
+    min-height: 0;
+  }
+
+  /* Administration, user cards: on the two-column layout the two password
+     fields shared one cell and their placeholders were cut off mid-word. */
+  @media (max-width: 80rem) {
+    .admin-user__passwords {
+      grid-column: 1 / -1;
+    }
+  }
+
+  /* Icon pack settings. */
+  .admin-settings__icons {
+    display: grid;
+    min-width: 0;
+    grid-column: 1 / -1;
+    gap: var(--space-3);
+    margin-top: var(--space-3);
+  }
+
+  .icon-preview {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    padding: var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-canvas-raised);
+    color: var(--color-text);
+    font-size: 1.25rem;
+  }
+
+  .icon-preview > .icon,
+  .icon-preview__filled {
+    display: grid;
+    width: 2.5rem;
+    height: 2.5rem;
+    place-items: center;
+    border-radius: var(--radius-sm);
+    background: rgb(var(--color-highlight-rgb) / 3%);
+  }
+
+  .icon-preview__filled {
+    color: var(--color-favorite);
+  }
+
+  /* Account forms: the options, then the button — with room between them. The
+     form had no layout at all, so "Zapisz" sat glued to the select above it. */
+  .account-preferences {
+    display: grid;
+    justify-items: start;
+    gap: var(--space-4);
+  }
+
+  .account-preferences > * {
+    max-width: 100%;
+  }
+
+  /* --- "Moje konto" → Ustawienia, 12.11.2026 ----------------------------------
+     Five cards of different heights in auto-fit columns left holes: every row
+     as tall as its tallest card, the theme card the tallest by far (its two
+     samples one under the other), and on a wide screen a fourth column that the
+     fifth card could not fill. At most three columns now, the cards of a row as
+     tall as each other, and from two columns on the theme card two wide with its
+     samples side by side: five cards fill two rows of three, or three of two. */
+  .account-grid--settings {
+    container: account-settings / inline-size;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, max(22rem, (100% - 2 * var(--space-5)) / 3)), 1fr));
+    align-items: stretch;
+  }
+
+  .account-grid--settings > .account-panel {
+    align-content: start;
+  }
+
+  /* Two columns of 22rem and the gap between them. */
+  @container account-settings (min-width: 45.25rem) {
+    .account-grid--settings > .account-panel--theme {
+      grid-column: span 2;
+    }
+  }
+
+  /* Each sample is its miniature beside its name — a third of the height it
+     took with the miniature on top; side by side where the card is wide enough
+     for two, one under the other where it is not (a phone). */
+  .account-panel--theme {
+    container: theme-panel / inline-size;
+  }
+
+  .account-panel--theme .theme-picker {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  @container theme-panel (min-width: 36rem) {
+    .account-panel--theme .theme-picker {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  .account-panel--theme .theme-option {
+    grid-template-columns: minmax(6.5rem, min(42%, 15rem)) minmax(0, 1fr);
+    align-items: center;
+    column-gap: var(--space-3);
+  }
+
+  /* An empty status line or result list at the end of a panel took a row of the
+     panel's grid, and a gap with it: the import panel ("Oceny i import") stood
+     two gaps taller than what it showed. Out of the flow while empty — a status
+     line stays in the page, where a screen reader expects to find it before
+     anything is said in it; an empty list is simply not drawn. */
+  .account-panel > .form-status:empty {
+    position: absolute;
+  }
+
+  .account-panel > div:empty {
+    display: none;
+  }
+
+  /* --- Settings forms in the administration panel, 12.11.2026 ------------------
+     `.admin-settings__grid` had no rule at all: each field was a block as wide
+     as the panel — a 1500-pixel select for one of three roles, a number field
+     the width of the screen — straight under the one before, its label touching
+     the field above. Fields now stand side by side as far as there is room,
+     14–18rem each (the longest option of a select fits, and a number field is
+     no wider than that), lined up on their inputs rather than their labels (a
+     label of two lines no longer lifts its neighbour), and a switch takes a line
+     of its own, as a list of switches reads. */
+  .admin-settings__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 14rem), 18rem));
+    align-items: end;
+    gap: var(--space-3) var(--space-4);
+  }
+
+  .admin-settings__grid > .toggle-field {
+    grid-column: 1 / -1;
+  }
+
+  /* A source's folder on the server's disk, under its name — read, not edited:
+     the installer changes it ("Foldery z mediami"), and the note under the cards
+     says so. One line; the whole path is on the tooltip. */
+  .admin-catalog__path {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: var(--space-2);
+    margin: 0;
+    color: var(--color-text-muted);
+    font-size: 0.8rem;
+  }
+
+  .admin-catalog__path > span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .admin-catalog__note {
+    grid-column: 1 / -1;
+    max-width: 72ch;
+    margin: 0;
+    color: var(--color-text-muted);
+    font-size: 0.82rem;
+  }
+
+  /* "Usuń konto" stands apart from "Zapisz", at the other end of the card's
+     footer: the two must not be one slip of the finger from each other. */
+  .admin-user__delete {
+    margin-right: auto;
+  }
+
+  /* The three library settings that come with a sentence of explanation keep a
+     row of their own for it; the control is as wide as what it holds. */
+  .admin-settings .admin-settings__audio-profile > .input {
+    width: 100%;
+    max-width: 38rem;
+  }
+
+  .admin-settings__audio-profile > input.input[type="number"] {
+    max-width: 12rem;
+  }
+
+  /* The security tab: a card per subject. One column on a phone and in a narrow
+     window, in the order they are written; from 56rem of panel up two, with
+     registration and the download limits beside the bot protection, the ladder
+     across, and the three single switches in one row. */
+  .admin-security {
+    container: admin-security / inline-size;
+  }
+
+  .admin-settings--security {
+    gap: var(--space-4);
+  }
+
+  .admin-settings__group {
+    display: grid;
+    min-width: 0;
+    align-content: start;
+    gap: var(--space-4);
+    padding: var(--space-4);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: var(--color-surface);
+  }
+
+  @container admin-security (min-width: 56rem) {
+    .admin-settings--security {
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      grid-template-areas:
+        "registration registration registration bots bots bots"
+        "limits limits limits bots bots bots"
+        "ladder ladder ladder ladder ladder ladder"
+        "twofa twofa sharing sharing player player"
+        "actions actions actions actions actions actions";
+    }
+
+    .admin-settings__group--registration { grid-area: registration; }
+    .admin-settings__group--bots { grid-area: bots; }
+    .admin-settings__group--limits { grid-area: limits; }
+    .admin-settings__group--ladder { grid-area: ladder; }
+    .admin-settings__group--twofa { grid-area: twofa; }
+    .admin-settings__group--sharing { grid-area: sharing; }
+    .admin-settings__group--player { grid-area: player; }
+    .admin-settings--security > .admin-settings__actions { grid-area: actions; }
+  }
+
+  /* The ladder's thresholds on a phone: four columns of number fields did not
+     fit, and "Okno (s)" ran off the screen. Each row becomes a block — what is
+     counted, then its three fields side by side, each named over its field. */
+  @container admin-security (max-width: 36rem) {
+    .stepup-thresholds,
+    .stepup-thresholds tbody {
+      display: block;
+    }
+
+    .stepup-thresholds thead {
+      display: none;
+    }
+
+    .stepup-thresholds tr {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: var(--space-2) var(--space-3);
+      padding: var(--space-3) 0;
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .stepup-thresholds :is(th, td) {
+      display: block;
+      padding: 0;
+      border: 0;
+    }
+
+    .stepup-thresholds th[scope="row"] {
+      grid-column: 1 / -1;
+    }
+
+    .stepup-thresholds td::before {
+      display: block;
+      margin-bottom: var(--space-1);
+      color: var(--color-text-muted);
+      content: attr(data-label);
+      font-size: 0.72rem;
+      font-weight: 700;
+    }
+
+    .stepup-thresholds .input {
+      min-width: 0;
+    }
+  }
+}

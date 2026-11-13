@@ -1,0 +1,20 @@
+# Plik odpowiedzi: kształt C — tylko ten komputer (http://localhost/).
+#
+#   sudo bash zainstaluj-debian.sh --answers installer/debian/examples/answers-localhost.toml
+#        bash zainstaluj-debian.sh --dry-run --answers installer/debian/examples/answers-localhost.toml
+#
+# Hasła administratora w tym pliku się nie podaje: admin.password_file (plik z chmod 600,
+# hasło w pierwszej linii) albo zmienna środowiskowa TRYHACKX_ADMIN_PASSWORD - wtedy
+# sudo --preserve-env=TRYHACKX_ADMIN_PASSWORD bash zainstaluj-debian.sh ... (sudo czyści środowisko).
+
+flow = "install"
+
+[access]
+mode = "local"                        # C; zapory instalator w tym trybie nie dotyka
+
+[[folders]]
+path = "/srv/media/muzyka"
+kind = "music"
+
+[admin]
+username = "jan"

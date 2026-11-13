@@ -1,0 +1,770 @@
+@layer components {
+  .app-shell {
+    display: grid;
+    grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+    min-height: 100dvh;
+  }
+
+  .sidebar {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    display: flex;
+    flex-direction: column;
+    width: var(--sidebar-width);
+    height: 100dvh;
+    padding: calc(var(--space-5) + var(--safe-top)) var(--space-5) calc(var(--space-5) + var(--safe-bottom)) calc(var(--space-5) + var(--safe-left));
+    border-right: 1px solid var(--color-border);
+    background: var(--color-canvas-raised);
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-height: 3rem;
+    font-weight: 750;
+    letter-spacing: -0.025em;
+  }
+
+  .brand__mark {
+    display: grid;
+    width: 2.25rem;
+    height: 2.25rem;
+    place-items: center;
+    border: 1px solid var(--color-accent-border);
+    border-radius: 0.7rem;
+    background: var(--color-accent-soft);
+    color: var(--color-accent);
+  }
+
+  .brand__copy {
+    display: grid;
+    line-height: 1.05;
+  }
+
+  .brand__copy small {
+    margin-top: var(--space-1);
+    font-size: 0.7rem;
+    font-weight: 650;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .nav-list {
+    display: grid;
+    gap: var(--space-2);
+    margin-top: var(--space-10);
+  }
+
+  .nav-link {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-height: 2.75rem;
+    padding: 0 var(--space-3);
+    border: 1px solid transparent;
+    border-radius: var(--radius-md);
+    color: var(--color-text-muted);
+    font-weight: 620;
+    transition:
+      background var(--duration-fast) var(--ease-standard),
+      border-color var(--duration-fast) var(--ease-standard),
+      color var(--duration-fast) var(--ease-standard);
+  }
+
+  .nav-link:hover {
+    background: var(--color-surface);
+    color: var(--color-text);
+  }
+
+  .nav-link[aria-current="page"] {
+    border-color: var(--color-accent-border);
+    background: var(--color-accent-soft);
+    color: var(--color-accent);
+  }
+
+  .icon {
+    display: inline-grid;
+    width: 1.2rem;
+    height: 1.2rem;
+    flex: 0 0 auto;
+    place-items: center;
+    color: currentColor;
+    font-family: var(--font-sans);
+    font-size: 1rem;
+    font-style: normal;
+    font-weight: 800;
+    line-height: 1;
+    user-select: none;
+  }
+
+  /* The glyph's box (display, width, line height, alignment) is set in
+     icons.css, outside any layer, where it wins; only what that file leaves
+     alone is said here. */
+  .icon__glyph {
+    height: 1em;
+    pointer-events: none;
+    transform: translateX(-1px);
+  }
+
+  .rating-star-visual {
+    position: relative;
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+    flex: 0 0 auto;
+    color: var(--color-star-empty);
+    font-size: 1.08em;
+    line-height: 1;
+  }
+
+  .rating-star-visual::before,
+  .rating-star-visual::after {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    content: "★";
+    white-space: nowrap;
+  }
+
+  .rating-star-visual::before {
+    color: var(--color-star-empty);
+  }
+
+  /* The filled star lies over the empty one, cut off where the rating ends:
+     `clip-path`, so a star that fills can be animated without laying anything
+     out (the cut used to be the pseudo-element's width). */
+  .rating-star-visual::after {
+    clip-path: inset(0 100% 0 0);
+    color: var(--color-warning);
+  }
+
+  .rating-star-visual[data-fill="half"]::after {
+    clip-path: inset(0 50% 0 0);
+  }
+
+  .rating-star-visual[data-fill="full"]::after {
+    clip-path: inset(0);
+  }
+
+  .sidebar__footer {
+    display: grid;
+    gap: var(--space-3);
+    margin-top: auto;
+  }
+
+  .user-chip {
+    display: grid;
+    grid-template-columns: 2.25rem minmax(0, 1fr);
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+  }
+
+  .user-chip__avatar {
+    display: grid;
+    width: 2.25rem;
+    height: 2.25rem;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--color-surface-strong);
+    color: var(--color-accent);
+    font-weight: 800;
+  }
+
+  .user-chip__copy {
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .user-chip__name,
+  .user-chip__role {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .user-chip__name {
+    font-size: 0.9rem;
+    font-weight: 700;
+  }
+
+  .user-chip__role {
+    color: var(--color-text-subtle);
+    font-size: 0.75rem;
+  }
+
+  .app-main {
+    min-width: 0;
+    padding-right: var(--safe-right);
+  }
+
+  /* Frosted rather than tinted. At a flat 94% the white, bold text of whatever
+     scrolled underneath stayed legible as a ghost — "Pobierz folder" printed
+     faintly behind the page title on every phone. The blur turns it into colour
+     instead of words; where blur is not available the bar is simply opaque. */
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    display: flex;
+    min-height: var(--header-height);
+    align-items: center;
+    gap: var(--space-4);
+    padding: var(--space-4) clamp(var(--space-4), 3vw, var(--space-10));
+    /* Under a translucent status bar the glass goes all the way up and the title
+       starts below it: the bar's own height, as a border the background shows through. */
+    border-top: var(--safe-top) solid transparent;
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-glass);
+    -webkit-backdrop-filter: blur(18px) saturate(150%);
+    backdrop-filter: blur(18px) saturate(150%);
+  }
+
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .topbar {
+      background: var(--color-canvas);
+    }
+  }
+
+  .topbar__copy {
+    min-width: 0;
+  }
+
+  /* The small line above a heading: in the header, over a section, on a
+     playlist card, in a dialog. `.eyebrow` was written into the markup in a
+     dozen places and had no rule at all, so it came out as body text standing
+     on the heading it was meant to introduce. */
+  .topbar__eyebrow,
+  .eyebrow {
+    display: block;
+    color: var(--color-accent);
+    font-size: 0.72rem;
+    font-weight: 750;
+    letter-spacing: 0.11em;
+    text-transform: uppercase;
+  }
+
+  .topbar__actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-left: auto;
+  }
+
+  /* The gutter has a name, so that something inside the page can run out to the
+     screen's edge and back (a shelf scrolled sideways on a phone). */
+  .page-content {
+    --page-gutter: clamp(var(--space-5), 3vw, var(--space-10));
+    width: min(100%, var(--content-max));
+    margin-inline: auto;
+    padding: var(--page-gutter);
+  }
+
+  .button,
+  .icon-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    min-height: 2.65rem;
+    border: 1px solid transparent;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-weight: 700;
+    transition:
+      background var(--duration-fast) var(--ease-standard),
+      border-color var(--duration-fast) var(--ease-standard),
+      color var(--duration-fast) var(--ease-standard),
+      transform var(--duration-fast) var(--ease-standard);
+  }
+
+  .button {
+    padding: 0 var(--space-4);
+  }
+
+  .icon-button {
+    width: 2.65rem;
+    padding: 0;
+    line-height: 0;
+  }
+
+  .icon-button > .icon,
+  .player-control > .icon {
+    width: 1.2rem;
+    height: 1.2rem;
+    place-items: center;
+  }
+
+  /* The lift is a hover effect, so it only exists where hovering does. On a
+     touch screen the last tapped button stays "hovered" until something else is
+     touched, which left it floating a pixel above its neighbours. */
+  @media (hover: hover) and (pointer: fine) {
+    .button:hover:not(:disabled),
+    .icon-button:hover:not(:disabled) {
+      transform: translateY(-1px);
+    }
+  }
+
+  /* A press answers the finger immediately — the one piece of motion a touch
+     screen gets instead of a hover. */
+  .button:active:not(:disabled),
+  .icon-button:active:not(:disabled) {
+    transform: scale(0.97);
+    transition-duration: 60ms;
+  }
+
+  .button:disabled,
+  .icon-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  .button--primary {
+    background: var(--color-accent);
+    color: var(--color-on-accent);
+  }
+
+  .button--primary:hover:not(:disabled) {
+    background: var(--color-accent-hover);
+  }
+
+  .button--secondary,
+  .icon-button {
+    border-color: var(--color-border);
+    background: var(--color-surface);
+    color: var(--color-text);
+  }
+
+  .button--secondary:hover:not(:disabled),
+  .icon-button:hover:not(:disabled) {
+    border-color: var(--color-border-strong);
+    background: var(--color-surface-hover);
+  }
+
+  .button--quiet {
+    background: transparent;
+    color: var(--color-text-muted);
+  }
+
+  .panel {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: var(--color-surface);
+    box-shadow: var(--shadow-card);
+  }
+
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    width: max-content;
+    padding: 0.35rem 0.65rem;
+    border: 1px solid var(--color-accent-border);
+    border-radius: 999px;
+    background: var(--color-accent-soft);
+    color: var(--color-accent);
+    font-size: 0.75rem;
+    font-weight: 750;
+  }
+
+  .status-pill::before {
+    width: 0.42rem;
+    height: 0.42rem;
+    border-radius: 50%;
+    background: currentColor;
+    content: "";
+  }
+
+  .notice {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+    padding: var(--space-4);
+    border: 1px solid var(--color-info-border);
+    border-radius: var(--radius-md);
+    background: var(--color-info-soft);
+    color: var(--color-on-info-soft);
+  }
+
+  .notice--success {
+    border-color: var(--color-accent-border);
+    background: var(--color-accent-soft);
+    color: var(--color-on-accent-soft);
+  }
+
+  /* `.notice--info` needs no rule: the base .notice is the informational look,
+     and the class only lets a caller name the intent. */
+
+  /* A notice that offers something to do about it (try again). */
+  .notice--action {
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .notice--error {
+    border-color: var(--color-danger-border);
+    background: var(--color-danger-soft);
+    color: var(--color-on-danger-soft);
+  }
+
+  .field {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .field__label {
+    color: var(--color-text-muted);
+    font-size: 0.82rem;
+    font-weight: 700;
+  }
+
+  /* A sentence under a field: what the choice does, said quietly. */
+  .field__hint {
+    color: var(--color-text-subtle);
+    font-size: 0.78rem;
+    line-height: 1.4;
+  }
+
+  .input {
+    width: 100%;
+    min-height: 3rem;
+    padding: 0 var(--space-4);
+    border: 1px solid var(--color-border-control);
+    border-radius: var(--radius-md);
+    background: var(--color-canvas-raised);
+    color: var(--color-text);
+    transition:
+      border-color var(--duration-fast) var(--ease-standard),
+      box-shadow var(--duration-fast) var(--ease-standard);
+  }
+
+  .input:focus {
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 0.2rem rgb(var(--color-accent-rgb) / 14%);
+    outline: 0;
+  }
+
+  .input--compact {
+    width: auto;
+    min-height: 2.35rem;
+    padding: 0 var(--space-3);
+    font-size: 0.85rem;
+  }
+
+  .sidebar-backdrop {
+    display: none;
+  }
+
+  .mobile-menu-button {
+    display: none;
+  }
+
+  /* A panel of filters that folds away on a phone (shared/filter-panel.ts).
+     Open by default everywhere; the fold only takes effect on narrow screens,
+     or on short ones — a phone held sideways has the width of a tablet and the
+     height of a letterbox. */
+  .filter-fold {
+    display: grid;
+    grid-template-rows: 1fr;
+    transition: grid-template-rows var(--duration-slow) var(--ease-out);
+  }
+
+  .filter-fold__inner {
+    min-width: 0;
+    min-height: 0;
+  }
+
+  .filter-toggle {
+    display: none;
+    flex: 0 0 auto;
+  }
+
+  .filter-toggle__badge {
+    display: inline-grid;
+    min-width: 1.25rem;
+    height: 1.25rem;
+    place-items: center;
+    padding-inline: 0.3rem;
+    border-radius: 999px;
+    background: var(--color-accent);
+    color: var(--color-on-accent);
+    font-size: 0.72rem;
+    font-weight: 850;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+
+  .filter-toggle.is-active {
+    border-color: var(--color-accent-border);
+    color: var(--color-accent);
+  }
+
+  @media (max-width: 48rem), (max-height: 32rem) {
+    .filter-toggle {
+      display: inline-flex;
+    }
+
+    /* Clipping is needed only while the fold can close; on a desktop it would
+       cut off the focus ring of a select sitting at the panel's edge. */
+    .filter-fold__inner {
+      overflow: hidden;
+    }
+
+    .filter-fold[data-collapsed="true"] {
+      grid-template-rows: 0fr;
+    }
+
+    /* Hidden only once the fold has finished closing, and visible at once when
+       it opens. `visibility` also takes the selects out of the tab order, so the
+       keyboard never lands on a control nobody can see. */
+    .filter-fold[data-collapsed="true"] > .filter-fold__inner {
+      visibility: hidden;
+      transition: visibility 0s linear var(--duration-slow);
+    }
+  }
+
+  /* --- Under a finger ------------------------------------------------------
+     A fingertip covers about 44 CSS pixels (2.75rem); buttons were 42.4 and
+     compact fields 37.6. And a field whose text is smaller than 16 px makes
+     iOS zoom the whole page in when it is focused — and leave it zoomed. Both
+     only where the pointer is coarse: a mouse keeps the denser layout. */
+  @media (pointer: coarse) {
+    .button,
+    .icon-button,
+    .input--compact {
+      min-height: 2.75rem;
+    }
+
+    .icon-button {
+      width: 2.75rem;
+    }
+
+    .input,
+    .input--compact {
+      font-size: 1rem;
+    }
+  }
+
+  /* --- Past the navigation, into the page -----------------------------------
+     The first thing Tab reaches (shell.ts). Off screen until it has the focus. */
+  .skip-link {
+    position: fixed;
+    top: var(--space-2);
+    left: var(--space-2);
+    z-index: 80;
+    padding: var(--space-2) var(--space-4);
+    border: 1px solid var(--color-accent-border);
+    border-radius: var(--radius-md);
+    background: var(--color-canvas-raised);
+    color: var(--color-text);
+    font-weight: 700;
+    cursor: pointer;
+    translate: 0 -300%;
+  }
+
+  .skip-link:focus-visible {
+    translate: 0 0;
+  }
+
+  /* The application's heading and main region take the focus from script (a
+     soft navigation, the skip link). They are not controls: no ring. */
+  .topbar h1:focus,
+  .page-content:focus {
+    outline: 0;
+  }
+
+  /* --- No session to draw the page from (shell.ts) --------------------------- */
+  .unreachable {
+    display: grid;
+    min-height: 100dvh;
+    place-content: center;
+    justify-items: center;
+    gap: var(--space-4);
+    padding: var(--space-8) var(--space-5);
+    text-align: center;
+  }
+
+  .unreachable__icon {
+    display: grid;
+    width: 3.5rem;
+    height: 3.5rem;
+    place-items: center;
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-lg);
+    background: var(--color-surface);
+    color: var(--color-text-muted);
+  }
+
+  .unreachable p {
+    max-width: 32rem;
+  }
+
+  /* --- Short messages (shared/toast.ts) --------------------------------------
+     At the top, where neither the player's dock nor a phone's keyboard covers
+     them, and above every dialog. */
+  .toast-region {
+    position: fixed;
+    top: calc(var(--safe-top) + var(--space-4));
+    left: 50%;
+    z-index: 1100;
+    display: grid;
+    width: min(100% - 2rem, 30rem);
+    gap: var(--space-2);
+    pointer-events: none;
+    translate: -50% 0;
+  }
+
+  .toast {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: start;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-3) var(--space-3) var(--space-4);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-md);
+    background: rgb(var(--color-canvas-raised-rgb) / 98%);
+    box-shadow: var(--shadow-float);
+    color: var(--color-text);
+    font-size: 0.9rem;
+    line-height: 1.4;
+    pointer-events: auto;
+    transition:
+      opacity var(--duration-fast) var(--ease-standard),
+      translate var(--duration-normal) var(--ease-out);
+  }
+
+  .toast > .icon {
+    margin-top: 0.1rem;
+  }
+
+  /* The time the message has left: a line along its bottom edge that runs out
+     (toast.ts starts it with the timer, and stops it while the message is being
+     read). `scale`, so nothing is laid out again while it runs. */
+  .toast {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .toast__life {
+    position: absolute;
+    inset: auto 0 0;
+    height: 2px;
+    background: currentColor;
+    opacity: 0.45;
+    transform-origin: 0 50%;
+  }
+
+  .toast__life.is-running {
+    animation: toast-life var(--toast-life, 4s) linear forwards;
+  }
+
+  .toast.is-held .toast__life {
+    animation: none;
+  }
+
+  @keyframes toast-life {
+    to {
+      scale: 0 1;
+    }
+  }
+
+  .toast__text {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .toast--error {
+    border-color: var(--color-danger-border);
+    background: var(--color-danger-soft);
+    color: var(--color-on-danger-soft);
+  }
+
+  .toast--success {
+    border-color: var(--color-accent-border);
+    background: var(--color-accent-soft);
+    color: var(--color-on-accent-soft);
+  }
+
+  .toast__close {
+    display: grid;
+    width: 1.75rem;
+    height: 1.75rem;
+    place-items: center;
+    padding: 0;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    opacity: 0.75;
+  }
+
+  .toast__close:hover {
+    opacity: 1;
+  }
+
+  .toast.is-leaving {
+    opacity: 0;
+    translate: 0 -0.5rem;
+  }
+
+  @starting-style {
+    .toast {
+      opacity: 0;
+      translate: 0 -0.75rem;
+    }
+  }
+
+  /* --- Placeholders in the shape of what is coming ----------------------------
+     A block of the surface colour with a faint band of light crossing it; under
+     reduced motion, the block alone. */
+  @keyframes skeleton-sweep {
+    to {
+      translate: 100% 0;
+    }
+  }
+
+  .skeleton {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--radius-sm);
+    background: var(--color-surface-hover);
+  }
+
+  .skeleton::after {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(100deg, transparent 30%, rgb(var(--color-highlight-rgb) / 6%) 50%, transparent 70%);
+    content: "";
+    translate: -100% 0;
+    animation: skeleton-sweep 1.4s linear infinite;
+  }
+
+  .skeleton--line {
+    display: block;
+    height: 0.8rem;
+    margin-top: var(--space-3);
+  }
+
+  .skeleton--short {
+    width: 55%;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .skeleton::after {
+      display: none;
+    }
+
+    /* A line that would jump from full to empty says nothing: none at all. */
+    .toast__life {
+      display: none;
+    }
+  }
+}
+

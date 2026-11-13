@@ -1,0 +1,266 @@
+@layer pages {
+  .library-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+    margin-bottom: var(--space-5);
+  }
+
+  .library-toolbar__summary {
+    color: var(--color-text-muted);
+  }
+
+  .library-toolbar__actions {
+    position: relative;
+    display: flex;
+    gap: var(--space-2);
+    margin-left: auto;
+  }
+
+  /* What is done to the whole folder, and rarely. On a wide screen these are
+     simply buttons of the row (the wrapper steps aside); on a phone they are a
+     menu behind one button — see the phone rules at the end of refinements.css. */
+  .library-toolbar__more {
+    display: contents;
+  }
+
+  .library-toolbar__more-toggle {
+    display: none;
+  }
+
+  /* The one word a narrow phone shows on the play button instead of the phrase (refinements.css). */
+  .library-toolbar__play-short {
+    display: none;
+  }
+
+  /* Picture filters. A row of its own under the toolbar: they belong together,
+     and on a phone they wrap instead of squeezing the sort control. */
+  .library-filter {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    gap: var(--space-3);
+    margin-bottom: var(--space-4);
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: var(--color-canvas-raised);
+  }
+
+  .library-filter.is-active {
+    border-color: var(--color-accent);
+  }
+
+  .library-filter__field {
+    display: grid;
+    min-width: 0;
+    gap: 0.2rem;
+    color: var(--color-text-muted);
+    font-size: 0.75rem;
+  }
+
+  .library-filter__select {
+    width: min(12rem, 42vw);
+  }
+
+  @media (max-width: 46rem) {
+    .library-filter__field {
+      flex: 1 1 8rem;
+    }
+
+    .library-filter__select {
+      width: 100%;
+    }
+  }
+
+  .load-more {
+    display: flex;
+    justify-content: center;
+    margin-top: var(--space-8);
+  }
+
+  .empty-state {
+    display: grid;
+    min-height: 18rem;
+    place-items: center;
+    padding: var(--space-8);
+    border: 1px dashed var(--color-border-strong);
+    border-radius: var(--radius-lg);
+    color: var(--color-text-muted);
+    text-align: center;
+  }
+
+  @media (max-width: 64rem) {
+    .app-shell {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .app-main {
+      padding-left: var(--safe-left);
+    }
+
+    .sidebar {
+      position: fixed;
+      left: 0;
+      max-width: calc(100vw - var(--space-8));
+      overscroll-behavior: contain;
+      transform: translateX(-100%);
+      transition: transform var(--duration-normal) var(--ease-standard);
+    }
+
+    html.has-open-sidebar {
+      overflow: hidden;
+    }
+
+    .app-shell[data-sidebar-open="true"] .sidebar {
+      transform: translateX(0);
+    }
+
+    .sidebar-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 25;
+      display: block;
+      visibility: hidden;
+      background: var(--color-overlay);
+      opacity: 0;
+      transition:
+        opacity var(--duration-normal) var(--ease-standard),
+        visibility var(--duration-normal) var(--ease-standard);
+    }
+
+    .app-shell[data-sidebar-open="true"] .sidebar-backdrop {
+      visibility: visible;
+      opacity: 1;
+    }
+
+    .mobile-menu-button {
+      display: inline-flex;
+    }
+  }
+
+  @media (max-width: 34rem) {
+    .topbar {
+      min-height: 4.5rem;
+    }
+
+    .topbar__eyebrow {
+      display: none;
+    }
+
+    .library-toolbar__actions {
+      width: 100%;
+      margin-left: 0;
+    }
+
+    /* Natural widths, whole buttons wrapping to the next line. Equal widths
+       (`flex: 1`) squeezed "Odtwórz folder" until its label broke in two. */
+    .library-toolbar__actions .button {
+      flex: 1 1 auto;
+      white-space: nowrap;
+    }
+  }
+
+  /* The toolbar's order select is as wide as what it says; its buttons keep to the right and wrap. */
+  .library-sort {
+    width: auto;
+    min-width: 12rem;
+  }
+
+  .library-toolbar__actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  /* A phone: one row — the order, the filters, play, and "more" for the rest.
+     The buttons used to wrap into four rows, and with the breadcrumbs and the
+     summary above them the first card of a library started past the middle of
+     the screen. The download of what was ticked appears under the row when
+     something is ticked, and only then. */
+  @media (max-width: 34rem) {
+    .library-toolbar__actions {
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: flex-start;
+    }
+
+    .library-toolbar__actions > .library-sort {
+      width: auto;
+      min-width: 0;
+      flex: 1 1 5rem;
+      padding-inline: var(--space-3);
+    }
+
+    .library-toolbar__actions > .button {
+      flex: 0 0 auto;
+      padding-inline: var(--space-3);
+    }
+
+    /* Narrower than this the row cannot hold the order, the filters, "more" and
+       a play button with its whole phrase: at 390 px the four came to 361 px in
+       a 350 px row and "more" fell to a row of its own. The phrase stays for a
+       screen reader (the declarations of `.sr-only`); what is shown is the one
+       word — and on the narrowest phones, where even that does not fit beside a
+       usable order select, the play button every player has. */
+    @media (max-width: 26rem) {
+      .library-toolbar__play-label {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+      }
+
+      .library-toolbar__play-short {
+        display: inline;
+      }
+    }
+
+    @media (max-width: 21.5rem) {
+      .library-toolbar__play-short {
+        display: none;
+      }
+    }
+
+    /* Its badge says how many are set; the word is on the button's own label. */
+    .library-toolbar__actions .filter-toggle__label {
+      display: none;
+    }
+
+    .library-toolbar__actions > .library-toolbar__selected {
+      flex: 1 1 100%;
+      order: 5;
+    }
+
+    .library-toolbar__more-toggle {
+      display: inline-flex;
+      flex: 0 0 auto;
+    }
+
+    .library-toolbar__more {
+      position: absolute;
+      top: calc(100% + var(--space-2));
+      right: 0;
+      z-index: 12;
+      display: none;
+      width: min(18rem, 100%);
+      gap: var(--space-2);
+      padding: var(--space-2);
+      border: 1px solid var(--color-border-strong);
+      border-radius: var(--radius-lg);
+      background: var(--color-canvas-raised);
+      box-shadow: var(--shadow-float);
+    }
+
+    .library-toolbar__more[data-open="true"] {
+      display: grid;
+    }
+
+    .library-toolbar__more > .button {
+      width: 100%;
+      justify-content: flex-start;
+    }
+  }
+}

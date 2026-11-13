@@ -1,0 +1,33 @@
+# fail2ban filter: refused sign-ins, codes and challenges of the TryHackX Media bridge.
+#
+# Copy to /etc/fail2ban/filter.d/tryhackx-media-auth.conf (without .example).
+# The Debian installer (zainstaluj-debian.sh) installs it for a standalone public
+# server (S); by hand, copy it as above.
+#
+# The bridge (integrations/php/stage/bridge.php, bridgeAuthLog) writes one line
+# per event with PHP's error_log(). Under Apache with mod_php and PHP's
+# `error_log` setting left unset (the Debian default), the line lands in the
+# virtual host's ErrorLog, and Apache itself puts the peer address in front of
+# it — the line carries no address of its own, only the first 16 hex digits of
+# the client digest the bridge keeps (sha256 of the address):
+#
+#   [Wed Nov 11 18:21:17.123456 2026] [php:notice] [pid 1234] [client 203.0.113.5:51234] tryhackx-auth event=login_failed action=login client=d9a27d381bbb63e1
+#
+# With PHP-FPM behind mod_proxy_fcgi the same text arrives wrapped:
+#
+#   [Wed Nov 11 18:21:17.123456 2026] [proxy_fcgi:error] [pid 1234:tid 5678] [client 203.0.113.5:51234] AH01071: Got error 'PHP message: tryhackx-auth event=login_failed action=login client=d9a27d381bbb63e1'
+#
+# Events: login_failed (wrong name or password), second_factor_failed (wrong
+# 2FA code), captcha_failed (a challenge that did not verify), login_limited
+# (the sign-in limit refused the attempt), blocked (the step-up ladder blocked
+# the client). `paused` is logged too but deliberately not matched: a pause is
+# the ladder's ordinary answer to a busy listener, not an attack.
+#
+# Check against the real log before enabling the jail:
+#   fail2ban-regex /var/log/apache2/tryhackx-media-error.log /etc/fail2ban/filter.d/tryhackx-media-auth.conf
+
+[Definition]
+
+failregex = ^(?:\[[^\]]*\d{4}\] )?\[[^\]]+\] \[pid [^\]]+\] \[client <HOST>(?::\d+)?\] (?:AH\d+: Got error 'PHP message: )?tryhackx-auth event=(?:login_failed|second_factor_failed|captcha_failed|login_limited|blocked)
+
+ignoreregex =

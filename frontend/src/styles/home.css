@@ -1,0 +1,941 @@
+@layer pages {
+  /* The start page (pages/home.ts): the title to carry on with, the libraries,
+     shelves, and "Zaskocz mnie".
+
+     Sizes are fluid — `clamp()` between what a 320 px phone can hold and what a
+     wide desktop should not exceed — so there is one layout that stretches, with
+     two real switches: below 48rem a shelf is a row that scrolls sideways, above
+     it one line of a grid; below 40rem the hero stands its picture on its text. */
+  .home {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: clamp(var(--space-5), 3vw, var(--space-8));
+  }
+
+  .home-top {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* --- The title to carry on with ------------------------------------------------
+     A wide card: what it is and how far in, on the left; its picture, sharp, on
+     the right; the same picture again behind both, enlarged and blurred until it
+     is only colour. The blur is drawn once — nothing here moves it. */
+  .home-hero {
+    --hero-cover: clamp(14rem, 36%, 30rem);
+    position: relative;
+    display: grid;
+    min-height: clamp(13rem, 26vw, 20rem);
+    grid-template-columns: minmax(0, 1fr) minmax(0, var(--hero-cover));
+    align-items: center;
+    gap: clamp(var(--space-4), 3vw, var(--space-10));
+    padding: clamp(var(--space-5), 3vw, var(--space-8));
+    overflow: hidden;
+    isolation: isolate;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-xl);
+    background: var(--color-surface);
+    box-shadow: var(--shadow-card), var(--glow-ambient);
+  }
+
+  /* A record cover is square: it gets less of the row than a film still. */
+  .home-hero--music {
+    --hero-cover: clamp(9rem, 22%, 15rem);
+  }
+
+  .home-hero__backdrop {
+    position: absolute;
+    z-index: -1;
+    inset: 0;
+    display: block;
+    overflow: hidden;
+  }
+
+  .home-hero__backdrop > .icon {
+    display: none;
+  }
+
+  .home-hero__backdrop-image {
+    position: absolute;
+    inset: -15%;
+    width: 130%;
+    height: 130%;
+    object-fit: cover;
+    filter: blur(2.5rem) saturate(1.3);
+    opacity: 0;
+    transition: opacity 600ms var(--ease-standard);
+  }
+
+  .home-hero__backdrop.has-image .home-hero__backdrop-image {
+    opacity: 0.5;
+  }
+
+  /* The page colour over the picture, heaviest under the words. */
+  .home-hero__backdrop::after {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, rgb(var(--color-canvas-rgb) / 94%) 0%, rgb(var(--color-canvas-rgb) / 70%) 52%, rgb(var(--color-canvas-rgb) / 34%) 100%);
+    content: "";
+  }
+
+  .home-hero__body {
+    display: grid;
+    min-width: 0;
+    justify-items: start;
+    gap: var(--space-2);
+  }
+
+  .home-hero__title {
+    display: -webkit-box;
+    margin: 0;
+    overflow: hidden;
+    font-size: clamp(1.45rem, 3.1vw, 2.5rem);
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+    overflow-wrap: anywhere;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .home-hero__title a:hover {
+    text-decoration: underline;
+    text-decoration-thickness: 0.08em;
+    text-underline-offset: 0.18em;
+  }
+
+  .home-hero__facts {
+    color: var(--color-text-muted);
+    font-size: clamp(0.86rem, 1.2vw, 1rem);
+  }
+
+  .home-hero__progress,
+  .shelf-card__progress {
+    display: block;
+    overflow: hidden;
+    background: rgb(var(--color-highlight-rgb) / 16%);
+  }
+
+  .home-hero__progress {
+    width: min(100%, 26rem);
+    height: 0.32rem;
+    margin-top: var(--space-2);
+    border-radius: 999px;
+  }
+
+  /* How far in: the line is whole and is uncovered from the left — `clip-path`,
+     so it is never laid out again — and its far end, in the second theme the red
+     of the signature, is reached only by something nearly finished. */
+  .home-hero__progress-fill,
+  .shelf-card__progress-fill {
+    display: block;
+    height: 100%;
+    background: var(--gradient-progress);
+    clip-path: inset(0 calc(100% - var(--progress, 0) * 100%) 0 0);
+  }
+
+  .home-hero__status {
+    color: var(--color-text-muted);
+    font-size: 0.9rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .home-hero__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2) var(--space-3);
+    margin-top: var(--space-3);
+  }
+
+  .home-hero__resume {
+    min-height: 3rem;
+    padding-inline: var(--space-6);
+    font-size: 1.02rem;
+  }
+
+  .home-hero__open {
+    display: block;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-lg);
+    background: none;
+    cursor: pointer;
+  }
+
+  .home-hero__cover,
+  .home-pick__cover,
+  .shelf-card__cover {
+    position: relative;
+    display: grid;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    place-items: center;
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background:
+      radial-gradient(circle at 78% 22%, rgb(var(--color-accent-rgb) / 10%), transparent 46%),
+      var(--color-canvas-raised);
+    color: var(--color-text-subtle);
+  }
+
+  .home-hero__cover--music,
+  .home-pick__cover--music,
+  .shelf-card__cover--music {
+    aspect-ratio: 1;
+  }
+
+  .home-hero__cover {
+    border-color: rgb(var(--color-highlight-rgb) / 14%);
+    box-shadow: var(--shadow-float);
+    transition: translate var(--duration-normal) var(--ease-out), box-shadow var(--duration-normal) var(--ease-standard);
+  }
+
+  /* No artwork: the kind's glyph on one of five quiet tints (the picture's own
+     id chooses — `data-tone`), so a row of tracks without covers is a row of
+     different cards and not the same grey square twelve times. */
+  :is(.home-hero__cover, .home-pick__cover, .shelf-card__cover)[data-tone="1"] {
+    background: radial-gradient(circle at 22% 78%, rgb(var(--color-info-rgb) / 14%), transparent 52%), var(--color-canvas-raised);
+  }
+
+  :is(.home-hero__cover, .home-pick__cover, .shelf-card__cover)[data-tone="2"] {
+    background: radial-gradient(circle at 50% 110%, rgb(var(--color-accent-rgb) / 16%), transparent 58%), var(--color-canvas-raised);
+  }
+
+  :is(.home-hero__cover, .home-pick__cover, .shelf-card__cover)[data-tone="3"] {
+    background: radial-gradient(circle at 80% 80%, rgb(var(--color-warning-rgb) / 9%), transparent 50%), var(--color-canvas-raised);
+  }
+
+  :is(.home-hero__cover, .home-pick__cover, .shelf-card__cover)[data-tone="4"] {
+    background: radial-gradient(circle at 18% 18%, rgb(var(--color-focus-rgb) / 12%), transparent 48%), var(--color-canvas-raised);
+  }
+
+  :is(.home-hero__cover, .home-pick__cover, .shelf-card__cover) > .icon {
+    width: 2.2rem;
+    height: 2.2rem;
+    font-size: 1.9rem;
+  }
+
+  :is(.home-hero__cover, .home-pick__cover, .shelf-card__cover).has-image > .icon {
+    display: none;
+  }
+
+  /* The picture fades in over the placeholder colour once it has loaded, and
+     grows a little inside its frame while the card is pointed at. */
+  .home-hero__cover-image,
+  .home-pick__cover-image,
+  .shelf-card__cover-image {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0;
+    transition: opacity var(--duration-slow) var(--ease-standard), scale 400ms var(--ease-out);
+  }
+
+  .has-image > :is(.home-hero__cover-image, .home-pick__cover-image, .shelf-card__cover-image) {
+    opacity: 1;
+  }
+
+  .home-hero__play {
+    position: absolute;
+    display: grid;
+    width: clamp(3rem, 18%, 4.25rem);
+    aspect-ratio: 1;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--color-accent);
+    box-shadow: 0 0.6rem 1.6rem rgb(var(--color-shadow-rgb) / 50%), var(--glow-accent);
+    color: var(--color-on-accent);
+    transition: scale var(--duration-normal) var(--ease-out);
+  }
+
+  .home-hero__play .icon {
+    font-size: 1.15rem;
+  }
+
+  /* --- A greeting, when nothing waits to be finished ------------------------------ */
+  .home-greeting {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .home-greeting__title {
+    margin: 0;
+    font-size: clamp(1.45rem, 3vw, 2.2rem);
+    letter-spacing: -0.03em;
+  }
+
+  /* --- The libraries: two doors, with what is behind each --------------------------- */
+  .home-libraries {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr));
+    gap: var(--space-3);
+  }
+
+  .home-library {
+    display: grid;
+    min-height: 4.5rem;
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background:
+      radial-gradient(circle at 100% 0, rgb(var(--color-accent-rgb) / 9%), transparent 55%),
+      var(--color-surface);
+    transition:
+      border-color var(--duration-normal) var(--ease-standard),
+      box-shadow var(--duration-normal) var(--ease-standard),
+      translate var(--duration-normal) var(--ease-out);
+  }
+
+  .home-library:active {
+    scale: 0.985;
+  }
+
+  .home-library__icon {
+    display: grid;
+    width: 2.75rem;
+    height: 2.75rem;
+    place-items: center;
+    border: 1px solid var(--color-accent-border);
+    border-radius: var(--radius-md);
+    background: var(--color-accent-soft);
+    color: var(--color-accent);
+  }
+
+  .home-library__copy {
+    display: grid;
+    min-width: 0;
+    gap: 0.1rem;
+  }
+
+  .home-library__copy strong {
+    font-size: 1.05rem;
+  }
+
+  /* The counts are words of their own that wrap whole, rather than one line
+     ending in an ellipsis: on a phone the last of them ("4856 odcinków") was the
+     one cut off. */
+  .home-library__facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 var(--space-3);
+    color: var(--color-text-muted);
+    font-size: 0.82rem;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.4;
+  }
+
+  .home-library__facts > span {
+    white-space: nowrap;
+  }
+
+  .home-library__new {
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    background: var(--color-accent-soft);
+    color: var(--color-accent);
+    font-size: 0.78rem;
+    font-weight: 750;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .home-library > .icon {
+    color: var(--color-accent);
+    transition: translate var(--duration-normal) var(--ease-out);
+  }
+
+  /* --- Shelves ------------------------------------------------------------------------- */
+  .home-shelves {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: clamp(var(--space-6), 3vw, var(--space-8));
+  }
+
+  .home-shelves:empty {
+    display: none;
+  }
+
+  .shelf,
+  .home-surprise {
+    display: grid;
+    min-width: 0;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-3);
+  }
+
+  .shelf__header {
+    display: flex;
+    min-width: 0;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+
+  .shelf__heading {
+    display: grid;
+    min-width: 0;
+    gap: 0.15rem;
+  }
+
+  .shelf__heading h2 {
+    margin: 0;
+    font-size: clamp(1.1rem, 1.7vw, 1.35rem);
+  }
+
+  .shelf__hint {
+    color: var(--color-text-muted);
+    font-size: 0.86rem;
+  }
+
+  .shelf__actions {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .shelf__more {
+    padding-inline: var(--space-3);
+    color: var(--color-accent);
+  }
+
+  .shelf__more .icon {
+    width: 0.9rem;
+    font-size: 0.72rem;
+    transition: rotate var(--duration-normal) var(--ease-out);
+  }
+
+  .shelf__more[aria-expanded="true"] .icon {
+    rotate: -90deg;
+  }
+
+  /* The dice turn while a draw is on its way. */
+  .is-rolling > .icon {
+    animation: dice-roll 700ms linear infinite;
+  }
+
+  @keyframes dice-roll {
+    to {
+      rotate: 1turn;
+    }
+  }
+
+  /* One line of a grid: as many cards as the window has columns for, and
+     home.ts puts away the rest (`is-beyond-row`) until "Zobacz wszystkie". */
+  .shelf__row {
+    --card-min: 15rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--card-min)), 1fr));
+    gap: var(--space-5) var(--space-4);
+  }
+
+  .shelf__row--music,
+  .shelf__row--mixed {
+    --card-min: 10.25rem;
+  }
+
+  .shelf-card.is-beyond-row {
+    display: none;
+  }
+
+  /* --- A card of a shelf: a picture that plays, and what it is under it --------------- */
+  .shelf-card {
+    position: relative;
+    display: grid;
+    min-width: 0;
+    grid-template-columns: minmax(0, 1fr);
+    align-content: start;
+    gap: var(--space-2);
+  }
+
+  .shelf-card__open {
+    display: block;
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-lg);
+    background: none;
+    cursor: pointer;
+  }
+
+  .shelf-card__cover {
+    box-shadow: var(--shadow-card);
+    transition:
+      border-color var(--duration-normal) var(--ease-standard),
+      box-shadow var(--duration-normal) var(--ease-standard),
+      translate var(--duration-normal) var(--ease-out),
+      scale var(--duration-fast) var(--ease-standard);
+  }
+
+  /* A shelf of both libraries: every picture square, so the row keeps one height. */
+  .shelf__row--mixed .shelf-card__cover {
+    aspect-ratio: 1;
+  }
+
+  .shelf-card__open:active .shelf-card__cover {
+    scale: 0.985;
+    transition-duration: 60ms;
+  }
+
+  /* Facts about the picture, on the picture. */
+  .shelf-card__badges {
+    position: absolute;
+    top: var(--space-2);
+    left: var(--space-2);
+    display: flex;
+    gap: 0.25rem;
+  }
+
+  .picture-badge {
+    padding: 0.12rem 0.4rem;
+    border-radius: 0.35rem;
+    background: rgb(var(--color-overlay-rgb) / 74%);
+    color: var(--color-white);
+    font-size: 0.72rem;
+    font-weight: 750;
+    letter-spacing: 0.03em;
+    line-height: 1.3;
+  }
+
+  .picture-badge--hdr {
+    color: var(--color-warning);
+  }
+
+  /* A folder offered whole (an album, a season): a small mark in the corner. */
+  .shelf-card__folder {
+    position: absolute;
+    bottom: var(--space-2);
+    left: var(--space-2);
+    display: grid;
+    width: 1.75rem;
+    height: 1.75rem;
+    place-items: center;
+    border-radius: 0.5rem;
+    background: rgb(var(--color-overlay-rgb) / 74%);
+    color: var(--color-info);
+  }
+
+  .shelf-card__folder .icon {
+    width: 1rem;
+    height: 1rem;
+    font-size: 0.85rem;
+  }
+
+  .shelf-card__progress {
+    position: absolute;
+    inset: auto 0 0;
+    height: 0.3rem;
+    background: rgb(var(--color-overlay-rgb) / 62%);
+  }
+
+  /* The play disc: there for a finger always, for a mouse when the card is
+     pointed at — and always on the shelves that exist for a quick start. */
+  .shelf-card__play {
+    position: absolute;
+    right: var(--space-2);
+    bottom: calc(var(--space-2) + 0.15rem);
+    display: grid;
+    width: clamp(2.25rem, 24%, 2.75rem);
+    aspect-ratio: 1;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--color-accent);
+    box-shadow: 0 0.4rem 1rem rgb(var(--color-shadow-rgb) / 45%);
+    color: var(--color-on-accent);
+    opacity: 0;
+    scale: 0.9;
+    transition: opacity var(--duration-fast) var(--ease-standard), scale var(--duration-normal) var(--ease-out);
+  }
+
+  .shelf-card__play .icon {
+    width: 1rem;
+    height: 1rem;
+    font-size: 0.85rem;
+  }
+
+  .shelf-card__open:focus-visible .shelf-card__play,
+  .home-pick__open:focus-visible .shelf-card__play,
+  .shelf[data-quick] .shelf-card__play {
+    opacity: 1;
+    scale: 1;
+  }
+
+  .shelf-card__body {
+    display: grid;
+    min-width: 0;
+    justify-items: start;
+    gap: 0.15rem;
+    padding-inline: 0.15rem;
+  }
+
+  .shelf-card__body > * {
+    max-width: 100%;
+  }
+
+  .shelf-card__title {
+    display: -webkit-box;
+    margin: 0;
+    overflow: hidden;
+    font-size: 0.92rem;
+    font-weight: 650;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+    text-wrap: initial;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .shelf-card__title a:hover,
+  .home-pick__title a:hover {
+    text-decoration: underline;
+    text-underline-offset: 0.18em;
+  }
+
+  .shelf-card__meta,
+  .shelf-card__reason {
+    overflow: hidden;
+    font-size: 0.8rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .shelf-card__meta {
+    color: var(--color-text-muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Why it is here: "Bo lubisz: …", "po: …", "Dodano wczoraj". */
+  .shelf-card__reason {
+    color: var(--color-text-subtle);
+  }
+
+  .shelf-card__badge {
+    padding: 0.1rem 0.45rem;
+    border-radius: var(--radius-sm);
+    background: var(--color-accent-soft);
+    color: var(--color-accent);
+    font-size: 0.72rem;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  /* "Nie proponuj": a quiet disc in the corner of the picture. Written against
+     the card, because `.icon-button[data-tooltip]` (library.css) claims
+     position: relative and would otherwise drop it back into the flow. */
+  .shelf-card .shelf-card__dismiss {
+    position: absolute;
+    top: var(--space-2);
+    right: var(--space-2);
+    width: 2rem;
+    min-height: 2rem;
+    border-color: transparent;
+    border-radius: 50%;
+    background: rgb(var(--color-overlay-rgb) / 74%);
+    color: var(--color-white);
+    opacity: 0;
+    transition: opacity var(--duration-fast) var(--ease-standard), background var(--duration-fast) var(--ease-standard);
+  }
+
+  .shelf-card .shelf-card__dismiss .icon {
+    width: 0.9rem;
+    height: 0.9rem;
+    font-size: 0.8rem;
+  }
+
+  .shelf-card__dismiss:focus-visible {
+    opacity: 1;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .home-library:hover {
+      border-color: var(--color-border-strong);
+      box-shadow: var(--shadow-card), var(--glow-ambient);
+      translate: 0 -2px;
+    }
+
+    .home-library:hover > .icon {
+      translate: 0.2rem 0;
+    }
+
+    .home-hero__open:hover .home-hero__cover {
+      box-shadow: var(--shadow-float), var(--glow-ambient);
+      translate: 0 -3px;
+    }
+
+    .home-hero__open:hover .home-hero__play {
+      scale: 1.08;
+    }
+
+    .shelf-card:hover .shelf-card__cover,
+    .home-pick__open:hover .home-pick__cover {
+      border-color: var(--color-border-strong);
+      box-shadow: var(--shadow-float), var(--glow-ambient);
+      translate: 0 -3px;
+    }
+
+    :is(.shelf-card, .home-pick):hover :is(.shelf-card__cover-image, .home-pick__cover-image),
+    .home-hero__open:hover .home-hero__cover-image {
+      scale: 1.03;
+    }
+
+    .shelf-card:hover .shelf-card__play,
+    .home-pick__open:hover .shelf-card__play {
+      opacity: 1;
+      scale: 1;
+    }
+
+    .shelf-card:hover .shelf-card__dismiss {
+      opacity: 1;
+    }
+
+    .shelf-card .shelf-card__dismiss:hover {
+      background: rgb(var(--color-overlay-rgb) / 92%);
+    }
+  }
+
+  /* Nothing hovers under a finger, so nothing can be revealed by hovering. The
+     picture itself is the play button there — a disc on every one of thirty
+     covers said so thirty times — except on the shelves made for a quick start,
+     where the disc is the point, and on a pick. The control that removes stays,
+     small and quiet in its corner, and as large to the touch as any button. */
+  @media (hover: none) {
+    .home-pick .shelf-card__play {
+      opacity: 1;
+      scale: 1;
+    }
+
+    .shelf-card .shelf-card__dismiss {
+      width: 1.7rem;
+      min-height: 1.7rem;
+      background: rgb(var(--color-overlay-rgb) / 58%);
+      opacity: 0.85;
+    }
+
+    .shelf-card .shelf-card__dismiss .icon {
+      width: 0.75rem;
+      height: 0.75rem;
+      font-size: 0.68rem;
+    }
+
+    .shelf-card .shelf-card__dismiss::before {
+      position: absolute;
+      inset: -0.55rem;
+      content: "";
+    }
+  }
+
+  /* A card added by "Zobacz wszystkie" fades in where it stands; only a new
+     listing arrives card by card (motion.css). */
+  .shelf-card[data-appended] {
+    animation: surface-fade 180ms var(--ease-standard) both;
+  }
+
+  /* --- "Zaskocz mnie" ---------------------------------------------------------------------- */
+  .home-surprise__picks {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+    gap: var(--space-4);
+  }
+
+  .home-surprise__picks--single {
+    grid-template-columns: minmax(0, 42rem);
+  }
+
+  .home-pick {
+    display: grid;
+    min-width: 0;
+    grid-template-columns: minmax(0, 44%) minmax(0, 1fr);
+    align-items: center;
+    gap: clamp(var(--space-3), 2vw, var(--space-5));
+    padding: var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-xl);
+    background:
+      radial-gradient(circle at 100% 0, rgb(var(--color-accent-rgb) / 9%), transparent 55%),
+      var(--color-surface);
+    box-shadow: var(--shadow-card);
+  }
+
+  .home-pick--music {
+    grid-template-columns: minmax(0, clamp(6.5rem, 30%, 11rem)) minmax(0, 1fr);
+  }
+
+  .home-pick__open {
+    display: block;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-lg);
+    background: none;
+    cursor: pointer;
+  }
+
+  .home-pick__cover {
+    transition:
+      border-color var(--duration-normal) var(--ease-standard),
+      box-shadow var(--duration-normal) var(--ease-standard),
+      translate var(--duration-normal) var(--ease-out);
+  }
+
+  .home-pick__body {
+    display: grid;
+    min-width: 0;
+    justify-items: start;
+    gap: var(--space-2);
+    padding-right: var(--space-2);
+  }
+
+  .home-pick__title {
+    display: -webkit-box;
+    margin: 0;
+    overflow: hidden;
+    font-size: clamp(1.02rem, 1.6vw, 1.3rem);
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .home-pick__facts {
+    font-size: 0.86rem;
+  }
+
+  /* --- What was hidden, and the way back ---------------------------------------------------- */
+  .home-footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-1) var(--space-3);
+    color: var(--color-text-subtle);
+    font-size: 0.86rem;
+  }
+
+  /* --- Placeholders ----------------------------------------------------------------------------
+     In the shape of the page, and not at once: an answer that comes within a
+     moment replaces nothing that was seen. The delay is the animation's, so a
+     page change that shows this as its new page fades it in with everything else. */
+  .home-skeleton {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: clamp(var(--space-5), 3vw, var(--space-8));
+    animation: skeleton-appear 200ms var(--ease-standard) 150ms backwards;
+  }
+
+  @keyframes skeleton-appear {
+    from {
+      opacity: 0;
+    }
+  }
+
+  .home-hero--skeleton {
+    display: block;
+    border-color: transparent;
+    box-shadow: none;
+  }
+
+  .home-library--skeleton {
+    display: block;
+    border-color: transparent;
+    border-radius: var(--radius-lg);
+  }
+
+  .shelf__title-skeleton {
+    width: min(60%, 14rem);
+    height: 1.3rem;
+    margin: 0;
+  }
+
+  .shelf-card--skeleton .shelf-card__cover {
+    border-color: transparent;
+    box-shadow: none;
+  }
+
+  .shelf-card--skeleton .skeleton--line {
+    margin-top: var(--space-1);
+  }
+
+  /* --- A phone: the hero stands its picture on its words ------------------------------------- */
+  @media (max-width: 40rem) {
+    .home-hero {
+      min-height: 0;
+      grid-template-columns: minmax(0, 1fr);
+      padding: var(--space-4);
+    }
+
+    .home-hero__open {
+      order: -1;
+    }
+
+    /* A record cover beside nothing would be a square of half the screen: it
+       keeps a size a thumb covers, left-aligned over the title. */
+    .home-hero--music .home-hero__open {
+      width: clamp(7rem, 42%, 11rem);
+    }
+
+    .home-hero__backdrop::after {
+      background: linear-gradient(180deg, rgb(var(--color-canvas-rgb) / 55%) 0%, rgb(var(--color-canvas-rgb) / 92%) 62%);
+    }
+
+    .home-hero__resume {
+      flex: 1 1 auto;
+    }
+
+    .shelf__hint {
+      display: none;
+    }
+
+    .shelf__reroll-label {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+    }
+
+    .shelf__reroll {
+      padding-inline: var(--space-3);
+    }
+  }
+
+  /* --- A phone and a small tablet: a shelf scrolls sideways ---------------------------------
+     Every card of the shelf in one row, a card and a half (films) or two and a
+     half (covers) in view so that there is always more to see, snapping to card
+     edges. The row runs to both edges of the screen — the page's own gutter is
+     taken back as padding — so a card being scrolled is cut by the screen and
+     not by an invisible line. */
+  @media (max-width: 48rem) {
+    .shelf__row {
+      grid-template-columns: none;
+      grid-auto-columns: clamp(12.5rem, 64vw, 17rem);
+      grid-auto-flow: column;
+      gap: var(--space-3);
+      margin-inline: calc(-1 * var(--page-gutter, 0px));
+      padding: 0.25rem var(--page-gutter, 0px) var(--space-2);
+      overflow-x: auto;
+      overscroll-behavior-x: contain;
+      scroll-padding-inline: var(--page-gutter, 0px);
+      scroll-snap-type: x proximity;
+      scrollbar-width: none;
+    }
+
+    .shelf__row::-webkit-scrollbar {
+      display: none;
+    }
+
+    .shelf__row--music,
+    .shelf__row--mixed {
+      grid-auto-columns: clamp(8rem, 38vw, 10.5rem);
+    }
+
+    .shelf-card {
+      scroll-snap-align: start;
+    }
+  }
+}

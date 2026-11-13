@@ -1,0 +1,27 @@
+# Plik odpowiedzi: kształt D — tylko sieć domowa, zwykłe HTTP.
+#
+# Hasła i sesje lecą wtedy po sieci domowej tekstem. Wolno to zrobić w sieci,
+# którą się kontroluje; aplikacji nie da się wtedy zainstalować na telefonie.
+#
+#   sudo bash zainstaluj-debian.sh --answers installer/debian/examples/answers-lan.toml
+#        bash zainstaluj-debian.sh --dry-run --answers installer/debian/examples/answers-lan.toml
+#
+# Hasła administratora w tym pliku się nie podaje: admin.password_file (plik z chmod 600,
+# hasło w pierwszej linii) albo zmienna środowiskowa TRYHACKX_ADMIN_PASSWORD - wtedy
+# sudo --preserve-env=TRYHACKX_ADMIN_PASSWORD bash zainstaluj-debian.sh ... (sudo czyści środowisko).
+
+flow = "install"
+
+[access]
+mode = "lan"                          # D
+
+[[folders]]
+path = "/srv/media/filmy"
+kind = "movies"
+
+[admin]
+username = "jan"
+
+[firewall]
+manage = true                         # ufw: serwer osiągalny tylko z sieci domowej
+# lan_subnets = ["192.168.1.0/24"]

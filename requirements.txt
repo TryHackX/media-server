@@ -1,0 +1,6 @@
+aiofiles>=23.2,<26
+cryptography>=48.0.1,<51
+fastapi>=0.110,<1
+PyMySQL>=1.1,<2
+mutagen>=1.47,<2
+uvicorn[standard]>=0.29,<1

@@ -1,0 +1,241 @@
+/* Every colour the interface draws is named here, and only here.
+
+   The other stylesheets hold no colour literals: they take a token, or build a
+   translucent colour from one of the `-rgb` triplets (`rgb(var(--color-accent-rgb) / 12%)`).
+   A theme is therefore one block that redefines these names — `:root[data-theme="…"]` —
+   and nothing else has to know it exists. (The one exception is
+   shared/visualizations/voltviz/stage.css, which mirrors the utility classes of a
+   vendored visualizer: there the colour is the class name.)
+
+   Triplets are space-separated channels without a function around them, so the
+   alpha can be chosen where the colour is used. A triplet and its solid token
+   are one colour written twice; change them together. */
+@layer tokens {
+  /* The first theme, and the one a page starts in. Written for `:root` and for
+     any element that names it, so one piece of the page can be drawn in a theme
+     the rest is not in — the two samples of the theme switch in "Moje konto" are
+     each drawn in their own colours, whichever is on. (An element that names a
+     theme gets every token below again, computed from its own values; that is
+     why the translucent ones are spelled out in the second theme too.) */
+  :root,
+  [data-theme="emerald"] {
+    color-scheme: dark;
+    /* The system's own interface font. "Inter" used to stand first and was never
+       shipped: the interface was Inter on the one machine that happened to have
+       it installed and something else everywhere else. */
+    --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --font-mono: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+
+    /* Surfaces, from the page outwards. */
+    --color-canvas: #0b0f14;
+    --color-canvas-rgb: 11 15 20;
+    --color-canvas-raised: #10161e;
+    --color-canvas-raised-rgb: 16 22 30;
+    --color-surface: #151c25;
+    --color-surface-hover: #1a2430;
+    --color-surface-hover-rgb: 26 36 48;
+    --color-surface-strong: #202c39;
+
+    /* Lines. `border` and `border-strong` are decoration (a card's edge, a rule):
+       1.4–2.0:1 against the surfaces, on purpose quiet. `border-control` is the
+       edge of something to type into or tick, which has to be seen to be found:
+       3.2:1 on the raised canvas (WCAG 1.4.11 asks for 3). `border-contrast` is
+       the same edge drawn over a picture. */
+    --color-border: #283543;
+    --color-border-strong: #3a4a5c;
+    --color-border-control: #56697f;
+    --color-border-contrast: #68788a;
+
+    /* `text-subtle` is the quietest text there is, and still text: 5.5:1 on a
+       surface, 5.0 on a hovered one, 4.5 on a strong one. It was #718092 — 4.25,
+       3.9 and 3.5 — under captions set at 10 to 12 pixels. */
+    --color-text: #f3f6f9;
+    --color-text-muted: #9ba9b8;
+    --color-text-subtle: #8493a5;
+
+    /* The accent and what stands on it. */
+    --color-accent: #54d6a0;
+    --color-accent-rgb: 84 214 160;
+    --color-accent-strong: #27b980;
+    --color-accent-hover: #70e5b5;
+    --color-accent-soft: #123b30;
+    --color-accent-border: #2d6c58;
+    --color-on-accent: #07120e;
+    --color-on-accent-soft: #c8f6e2;
+    --color-focus: #a6f1cf;
+    --color-focus-rgb: 166 241 207;
+
+    /* States: each is a colour, its quiet background, the border around that
+       background and the text that reads on it. */
+    --color-info: #75b8ff;
+    --color-info-rgb: 117 184 255;
+    --color-info-soft: #152f4a;
+    --color-info-border: #28527b;
+    --color-on-info-soft: #cfe7ff;
+    --color-danger: #ff7b86;
+    --color-danger-soft: #401d25;
+    --color-danger-border: #7b3440;
+    --color-danger-border-strong: #b04a5a;
+    --color-on-danger-soft: #ffd4d8;
+    --color-warning: #ffd166;
+    --color-warning-rgb: 255 209 102;
+    --color-warning-soft: rgb(var(--color-warning-rgb) / 12%);
+    --color-warning-border: #7a5a2b;
+    --color-on-warning-soft: #ffe6a1;
+
+    /* A favourite is its own colour: it is neither an error nor the accent. */
+    --color-favorite: #ff7895;
+    --color-favorite-soft: rgb(174 63 92 / 15%);
+    --color-favorite-border: #7e3e50;
+    --color-star-empty: #526172;
+
+    /* What is laid over other things. One near-black for all of it — a backdrop
+       behind a dialog, a badge on a cover, the controls over a film — at whatever
+       strength the place needs. */
+    --color-overlay-rgb: 3 7 12;
+    --color-overlay: rgb(var(--color-overlay-rgb) / 72%);
+    --color-scrim: rgb(var(--color-overlay-rgb) / 86%);
+    /* The topbar's frosted glass. Opaque enough that nothing scrolled under it
+       can be read, which is what it failed at with plain 94% and no blur. */
+    --color-glass: rgb(var(--color-canvas-rgb) / 78%);
+    /* Behind a picture: the letterbox of a film, the stage of a visualizer. */
+    --color-video-black: #020406;
+
+    /* Light and shadow. Highlights stay white and shadows stay dark in any theme;
+       a theme may tint the shadow. */
+    --color-shadow-rgb: 0 0 0;
+    --color-highlight-rgb: 255 255 255;
+    --color-white: #fff;
+    --color-black: #000;
+
+    /* The line that says "something is happening" (navigation progress), and the
+       same idea where a line fills up: the player's progress, the ring that counts
+       down to the next episode, the mark beside the open page in the navigation.
+       Thin lines only — a signature, not a surface. */
+    --gradient-signature: linear-gradient(90deg, rgb(var(--color-accent-rgb) / 0%), var(--color-accent) 35%, var(--color-focus));
+    --gradient-progress: linear-gradient(90deg, var(--color-accent-strong), var(--color-accent) 60%, var(--color-focus));
+    /* The two ends of that line as plain colours, for a stroke that cannot take a gradient. */
+    --color-signature-start: var(--color-accent);
+    --color-signature-end: var(--color-focus);
+    --glow-accent: 0 0 0.6rem rgb(var(--color-accent-rgb) / 55%);
+    /* Light that seems to come from behind the interface. This theme has none:
+       both are "nothing", so a rule can name them without asking which theme is on. */
+    --glow-ambient: 0 0 0 0 transparent;
+    --ambient-light: none;
+
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-5: 1.25rem;
+    --space-6: 1.5rem;
+    --space-8: 2rem;
+    --space-10: 2.5rem;
+    --space-12: 3rem;
+
+    --radius-sm: 0.5rem;
+    --radius-md: 0.75rem;
+    --radius-lg: 1rem;
+    --radius-xl: 1.35rem;
+    --shadow-card: 0 1rem 2.5rem rgb(var(--color-shadow-rgb) / 18%);
+    --shadow-float: 0 1.5rem 4rem rgb(var(--color-shadow-rgb) / 38%);
+
+    /* The parts of the screen a phone keeps for itself (the status bar, the home
+       indicator, a notch in landscape). Zero everywhere else. The pages ask for
+       the whole screen (`viewport-fit=cover`), so whatever touches an edge adds
+       the matching one of these. */
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-right: env(safe-area-inset-right, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-left: env(safe-area-inset-left, 0px);
+
+    --content-max: 112rem;
+    --sidebar-width: 17rem;
+    --header-height: 5rem;
+    --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+    /* Arrivals: quick to start, long settle. What enters the screen uses this. */
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    /* What leaves the screen: quick to go, no settling. An exit takes about
+       two thirds of the time the same thing took to arrive. */
+    --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+    --duration-fast: 140ms;
+    --duration-normal: 220ms;
+    --duration-slow: 340ms;
+    /* A sheet rising from the bottom edge of a phone travels further than
+       anything else here, and gets the time for it. */
+    --duration-sheet: 420ms;
+    --duration-exit: 150ms;
+  }
+
+  /* --- „Estoril Blue” ---------------------------------------------------------
+     The second theme: deep navy surfaces, an electric blue accent and ambient
+     light the colour of a car's cabin at night. The three-colour line — light
+     blue, blue, red — is its signature and is drawn only where a line is thin
+     (see --gradient-signature above).
+
+     Every pair that carries text was measured (WCAG 2.1 contrast, the script is
+     tools/contrast.mjs of the stage-4 notes; the numbers are in FRONTEND.md):
+     text 18.4:1 on the canvas and 16.6 on a surface, muted text 9.3 / 8.4,
+     subtle text 6.6 / 6.0 / 5.0 on a strong surface, the accent 7.5 / 6.8, text
+     on the accent 7.3, control borders 3.4 on a raised canvas. */
+  [data-theme="blue"] {
+    --color-canvas: #060a14;
+    --color-canvas-rgb: 6 10 20;
+    --color-canvas-raised: #0a1020;
+    --color-canvas-raised-rgb: 10 16 32;
+    --color-surface: #0e1629;
+    --color-surface-hover: #131e36;
+    --color-surface-hover-rgb: 19 30 54;
+    --color-surface-strong: #1a2744;
+
+    --color-border: #1f2d4d;
+    --color-border-strong: #2f4370;
+    --color-border-control: #4a67a6;
+    --color-border-contrast: #6f86b8;
+
+    --color-text: #f2f6fc;
+    --color-text-muted: #a3b3cf;
+    --color-text-subtle: #8496b8;
+
+    --color-accent: #4aa3ff;
+    --color-accent-rgb: 74 163 255;
+    --color-accent-strong: #1f7ff0;
+    --color-accent-hover: #74b8ff;
+    --color-accent-soft: #0d2a52;
+    --color-accent-border: #24508f;
+    --color-on-accent: #04101f;
+    --color-on-accent-soft: #cfe4ff;
+    --color-focus: #a8d4ff;
+    --color-focus-rgb: 168 212 255;
+
+    /* Cyan, so "information" does not merge with the accent beside it. */
+    --color-info: #7ad7f0;
+    --color-info-rgb: 122 215 240;
+    --color-info-soft: #0b2c3a;
+    --color-info-border: #1d5a73;
+    --color-on-info-soft: #cfe4ff;
+    --color-danger-soft: #3d1a28;
+
+    --color-star-empty: #3c4d70;
+
+    --color-overlay-rgb: 2 5 12;
+    --color-overlay: rgb(var(--color-overlay-rgb) / 74%);
+    --color-scrim: rgb(var(--color-overlay-rgb) / 86%);
+    --color-glass: rgb(var(--color-canvas-rgb) / 78%);
+    --color-video-black: #01030a;
+    --color-shadow-rgb: 0 4 20;
+
+    --gradient-signature: linear-gradient(90deg, #6ec1ff 0%, #2f6bff 55%, #ff5266 100%);
+    --gradient-progress: linear-gradient(90deg, #6ec1ff 0%, #2f6bff 55%, #ff5266 100%);
+    --color-signature-start: #6ec1ff;
+    --color-signature-end: #ff5266;
+    --glow-accent: 0 0 0.8rem rgb(74 163 255 / 55%);
+    --glow-ambient: 0 0 2.5rem rgb(47 107 255 / 18%);
+    --ambient-light:
+      radial-gradient(60rem 30rem at 85% -10%, rgb(47 107 255 / 14%), transparent 60%),
+      radial-gradient(40rem 24rem at 0% 110%, rgb(110 193 255 / 8%), transparent 60%);
+
+    --shadow-card: 0 1rem 2.5rem rgb(var(--color-shadow-rgb) / 30%);
+    --shadow-float: 0 1.5rem 4rem rgb(var(--color-shadow-rgb) / 50%);
+  }
+}

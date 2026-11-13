@@ -1,0 +1,80 @@
+/*
+ * The Fable presets' one control over the picture: the listener's own image or video in place
+ * of the cover. It looks as VoltViz's "Upload Image" does (voltviz/stage.css: a white-on-glass
+ * pill and a round button, bottom right), written out here because VoltViz's rules stay inside
+ * its own stage.
+ */
+@layer pages {
+  .fable-overlay,
+  .fable-overlay * {
+    box-sizing: border-box;
+    margin: 0;
+  }
+
+  .fable-overlay {
+    position: absolute;
+    right: 1.5rem;
+    bottom: 1.5rem;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: var(--color-white);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", Arial, sans-serif;
+    font-size: 0.875rem;
+    font-weight: 400;
+    line-height: 1.25rem;
+    letter-spacing: normal;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .fable-overlay__pill,
+  .fable-overlay__round {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    border: 1px solid color-mix(in oklab, var(--color-white) 20%, transparent);
+    border-radius: calc(infinity * 1px);
+    background-color: color-mix(in oklab, var(--color-white) 10%, transparent);
+    color: var(--color-white);
+    font: inherit;
+    cursor: pointer;
+    transition: background-color 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .fable-overlay__pill {
+    padding: 0.5rem 1rem;
+  }
+
+  .fable-overlay__round {
+    padding: 0.5rem;
+  }
+
+  .fable-overlay__pill:hover,
+  .fable-overlay__round:hover {
+    background-color: color-mix(in oklab, var(--color-white) 20%, transparent);
+  }
+
+  .fable-overlay__pill:focus-visible,
+  .fable-overlay__round:focus-visible {
+    outline: 2px solid var(--color-white);
+    outline-offset: 2px;
+  }
+
+  .fable-overlay svg {
+    display: block;
+    width: 1rem;
+    height: 1rem;
+  }
+
+  .fable-overlay input {
+    display: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .fable-overlay__pill,
+    .fable-overlay__round {
+      transition: none;
+    }
+  }
+}

@@ -1,0 +1,77 @@
+# PRZYKŁAD kompletnego hosta wirtualnego — instalacja widoczna z sieci.
+#
+# Pozostałe dwa pliki w tym katalogu (`media-next.conf.example`
+# i `media-transfer.conf.example`) są **fragmentami**: dają aliasy, nagłówki
+# i trasę transferu, ale nie mówią, pod jaką nazwą i na jakim porcie serwer
+# odpowiada ani gdzie ma DocumentRoot. Bez tego pliku (albo bez własnego hosta,
+# który robi to samo) pod `https://twoj.host/` odpowiada domyślna strona
+# Apache'a, a aplikacja jest nieosiągalna — mimo że `configtest` przechodzi.
+#
+# Debian:  /etc/apache2/sites-available/tryhackx-media.conf  → `a2ensite tryhackx-media`
+# WAMP:    dopisz analogiczny host do conf/extra/httpd-vhosts.conf
+#
+# Wymagane moduły: proxy, proxy_http, headers, env, alias, ssl, rewrite nie jest
+# potrzebny. Na Debianie: `a2enmod proxy proxy_http headers ssl`.
+#
+# **Certyfikat musi istnieć, zanim włączysz tego hosta.** Apache ze wskazanym,
+# a nieistniejącym `SSLCertificateFile` nie startuje — `configtest` kończy się
+# błędem „file ... does not exist or is empty" i kodem 1. Kolejność, która działa:
+# najpierw certyfikat (`certbot certonly --webroot -w /var/www/html -d twoj.host`,
+# port 80 obsługuje jeszcze domyślny host), potem `a2ensite`.
+#
+# ————— DO USTAWIENIA (cztery rzeczy) —————
+# 1. `Define`y niżej: nazwa hosta, drzewo aplikacji, prywatna konfiguracja.
+# 2. Ścieżki certyfikatu.
+# 3. `[app] base_url` w prywatnej konfiguracji — **pełny adres**, ten sam co
+#    `TRYHACKX_SERVER_NAME`. Link aktywacyjny idzie e-mailem; ścieżka względna
+#    znaczy, że nikt nowy nie dokończy rejestracji.
+# 4. W `media-transfer.conf` — wariant publiczny (`Require all granted`).
+#    Zostawiony `Require local` daje najgorszy rodzaj awarii: biblioteka się
+#    wyświetla, a każde odtworzenie i pobranie dostaje 403.
+#
+# Za reverse proxy dochodzi `[proxy] trusted` w prywatnej konfiguracji.
+# Wszystkie trzy kształty wystawienia opisuje docs/PUBLIC-EXPOSURE.md.
+
+# `Define` stoi poza hostem wirtualnym, czyli w kontekście konfiguracji serwera
+# — tam działa w każdej wersji 2.4.
+Define TRYHACKX_SERVER_NAME "twoj.host"
+Define TRYHACKX_MEDIA_ROOT "/opt/tryhackx-media-server/current"
+Define TRYHACKX_BRIDGE_CONFIG "/etc/tryhackx-media-server/config.local.toml"
+
+# Port 80 tylko przekierowuje. Aplikacja postawiona tutaj wygląda na działającą,
+# a odbija każde kliknięcie: most odrzuca logowanie po zwykłym HTTP (422),
+# i gość nie zgadnie, że brakuje jednej litery w adresie.
+<VirtualHost *:80>
+    ServerName ${TRYHACKX_SERVER_NAME}
+    RedirectMatch permanent "^/(.*)$" "https://${TRYHACKX_SERVER_NAME}/$1"
+</VirtualHost>
+
+<VirtualHost *:443>
+    ServerName ${TRYHACKX_SERVER_NAME}
+
+    # Aplikacja stoi pod głównym adresem — tak, jak spodziewa się ktoś, kto
+    # wpisze samą nazwę serwera. Robi to DocumentRoot, a nie `Alias "/"`, który
+    # przykryłby wszystkie pozostałe aliasy na tym serwerze.
+    DocumentRoot "${TRYHACKX_MEDIA_ROOT}/public/assets/build"
+
+    SSLEngine on
+    SSLCertificateFile      /etc/letsencrypt/live/twoj.host/fullchain.pem
+    SSLCertificateKeyFile   /etc/letsencrypt/live/twoj.host/privkey.pem
+
+    # HSTS należy do hosta kończącego TLS. Bez niego pierwsze wejście po http://
+    # zdąży wysłać ciasteczko, zanim przekierowanie wyżej zadziała.
+    Header always set Strict-Transport-Security "max-age=31536000"
+
+    # Aliasy, nagłówki bezpieczeństwa i reguły dostępu do zbudowanego frontu.
+    Include /etc/apache2/conf-available/media-next.conf
+    # Trasa, którą lecą bajty. **Bez niej nic nie zagra ani się nie pobierze.**
+    Include /etc/apache2/conf-available/media-transfer.conf
+
+    ErrorLog  ${APACHE_LOG_DIR}/tryhackx-media-error.log
+    CustomLog ${APACHE_LOG_DIR}/tryhackx-media-access.log combined
+</VirtualHost>
+
+# Gdy oba fragmenty są już włączone globalnie przez `a2enconf`, usuń stąd obie
+# linie `Include` — inaczej te same aliasy wejdą dwa razy. Włączenie globalne
+# jest wygodne na maszynie robiącej wyłącznie za ten serwer; `Include` w hoście
+# jest właściwsze, gdy Apache obsługuje też inne strony.

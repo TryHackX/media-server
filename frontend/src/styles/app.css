@@ -1,0 +1,22 @@
+/* The application's own styles, on top of core.css. Not loaded by the sign-in
+   page or the guest page.
+
+   All of it is `@layer pages`, where a later rule wins at equal specificity:
+   the order of these lines is part of the styles. */
+@layer tokens, reset, base, components, utilities, pages;
+
+@import "./pages.css";
+@import "./library.css";
+@import "./metadata-editor.css";
+@import "./player.css";
+@import "./admin.css";
+@import "./collections.css";
+@import "./video-viewer.css";
+@import "./cards.css";
+@import "./action-menu.css";
+@import "./home.css";
+@import "./motion.css";
+
+@import "./refinements.css";
+@import "./list-picker.css";
+@import "./panels.css";

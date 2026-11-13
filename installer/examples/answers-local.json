@@ -1,0 +1,11 @@
+{
+  "flow": "install",
+  "target": "C:/TryHackX/MediaServer",
+  "database": { "engine": "mysql", "name": "media_server", "user": "media_server", "admin_user": "root" },
+  "folders": [
+    { "path": "E:/Muzyka", "kind": "music" }
+  ],
+  "access": { "mode": "local" },
+  "admin": { "username": "jan" },
+  "options": { "autostart_services": true, "start_scan": true }
+}

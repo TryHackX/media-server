@@ -1,0 +1,144 @@
+# Wdrożenie dla WAMP — wariant **za reverse proxy**, z aplikacją pod **głównym
+# adresem** (`/`), nie pod podkatalogiem. Instalacja wprost, bez proxy, ma
+# kompletny przykład hosta w `media-vhost.conf.example`; kształty wystawienia
+# opisuje docs/PUBLIC-EXPOSURE.md.
+# Aktywacja: skopiuj ten plik do C:/wamp64/alias/media-next-stage.conf,
+# sprawdź httpd -t i dopiero potem przeładuj usługę Apache.
+#
+# Ruch z zewnątrz przychodzi przez proxy: to ono kończy pierwszy odcinek TLS,
+# podaje `X-Forwarded-For`/`X-Forwarded-Proto` i samo przekierowuje HTTP na
+# HTTPS. Adres proxy musi być wpisany w prywatnej konfiguracji jako
+# `[proxy] trusted` — inaczej limit prób logowania i CAPTCHA widzą wszystkich
+# gości jako jeden adres i przestają cokolwiek chronić.
+#
+# **Aplikacja pod `/` to `DocumentRoot` hostów wirtualnych**, ustawiony
+# w conf/extra/httpd-vhosts.conf — nie da się tego zrobić `Alias "/"`, bo taki
+# alias przykryłby wszystkie pozostałe (adminer, phpMyAdmin, phpSysInfo).
+# Aliasy mają pierwszeństwo przed DocumentRoot, więc tamte działają dalej.
+#
+# Jedyne miejsce ze ścieżką drzewa projektu w tym pliku.
+Define TRYHACKX_MEDIA_ROOT "C:/wamp64/media-server"
+
+# Stare adresy z czasów, gdy biblioteka stała pod /media-next/. Zakładki, historia
+# przeglądarki i zainstalowana aplikacja PWA trafiają dzięki temu tam, gdzie
+# trzeba, zamiast dostawać 404. `/media-next/music/` → `/music/`.
+#
+# Po `/media-next` musi stać ukośnik albo koniec adresu. Wzorzec bez tego
+# (`/media-next/?(.*)`) łapie także **`/media-next-api`** i przerzuca most na
+# `/-api` — aplikacja ładuje się wtedy w całości i pokazuje puste tło, bo nie
+# ma z czym rozmawiać.
+RedirectMatch 302 "^/media-next(?:/(.*))?$" "/$1"
+
+# Publiczny profil konta ma własny adres (`/account/ktos/`), a to jedna strona
+# z jednym plikiem — bez tej reguły wejście prosto pod taki adres kończy się 404.
+AliasMatch "^/account/[^/]+/?$" "${TRYHACKX_MEDIA_ROOT}/public/assets/build/account/index.html"
+
+Alias "/media-next-api" "${TRYHACKX_MEDIA_ROOT}/integrations/php/stage/bridge.php"
+
+SetEnv TRYHACKX_BRIDGE_CONFIG "${TRYHACKX_MEDIA_ROOT}/config/config.local.toml"
+# Dopuszcza zwykłe HTTP **wyłącznie z pętli zwrotnej** — czyli trzyma przy życiu
+# localhost. Gość z zewnątrz ma jako peer adres proxy, więc jego to nie dotyczy
+# i nadal musi przyjść po HTTPS.
+SetEnv TRYHACKX_BRIDGE_ALLOW_HTTP_LOCAL "1"
+
+# Nagłówki bezpieczeństwa siedzą przy **katalogu**, a nie przy ścieżce URL.
+# Gdy aplikacja stoi pod `/`, reguła `<Location "/">` objęłaby cały serwer —
+# łącznie z adminerem i phpMyAdminem, którym `default-src 'self'` popsułoby
+# działanie. Katalog dotyczy wyłącznie naszych plików.
+<Directory "${TRYHACKX_MEDIA_ROOT}/public/assets/build">
+    Options -Indexes -ExecCGI -Includes
+    AllowOverride None
+    DirectoryIndex index.html
+    Require all granted
+
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "DENY"
+    Header always set Referrer-Policy "no-referrer"
+    Header always set Permissions-Policy "camera=(), microphone=(), geolocation=()"
+    Header always set Content-Security-Policy "default-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'; object-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; connect-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:"
+
+    <FilesMatch "(^\.|\.(map|php|phtml|phar)$)">
+        Require all denied
+    </FilesMatch>
+
+    # Nazwy plików JS/CSS niosą skrót zawartości, więc nigdy się nie zmieniają
+    # w miejscu — mogą leżeć w cache dowolnie długo. Strony HTML wskazują na te
+    # nazwy i muszą być sprawdzane przy każdym wejściu, inaczej po `npm run build`
+    # przeglądarka dalej ładuje poprzednie wydanie i poprawki „nie działają".
+    <FilesMatch "\.html$">
+        Header always set Cache-Control "no-cache"
+    </FilesMatch>
+
+    <FilesMatch "\.(js|css|woff2?|png|jpg|jpeg|svg|webp)$">
+        Header always set Cache-Control "public, max-age=31536000, immutable"
+    </FilesMatch>
+
+    # Aplikacja instalowalna (PWA). Manifest musi mieć własny typ MIME, bo
+    # nagłówek nosniff nie pozwala przeglądarce go zgadnąć.
+    AddType application/manifest+json .webmanifest
+
+    # Service worker jest wyjątkiem od reguły wyżej: jego nazwa się nie zmienia,
+    # więc roczny cache zamroziłby wersję, która zna nieistniejące już paczki.
+    <Files "sw.js">
+        Header always set Cache-Control "no-cache"
+    </Files>
+</Directory>
+
+# Strona logowania jako jedyna dociąga skrypt dostawcy CAPTCHA wybranego
+# w panelu (reCAPTCHA / hCaptcha / Turnstile), więc tylko tu polityka dopuszcza
+# te źródła. Bez tego bloku włączenie CAPTCHA blokuje logowanie wszystkim.
+<Directory "${TRYHACKX_MEDIA_ROOT}/public/assets/build/login">
+    Header always set Content-Security-Policy "default-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'; object-src 'none'; script-src 'self' https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/ https://hcaptcha.com https://*.hcaptcha.com https://challenges.cloudflare.com; style-src 'self' https://hcaptcha.com https://*.hcaptcha.com; connect-src 'self' https://hcaptcha.com https://*.hcaptcha.com; frame-src https://www.google.com/recaptcha/ https://recaptcha.google.com/recaptcha/ https://hcaptcha.com https://*.hcaptcha.com https://challenges.cloudflare.com; img-src 'self' data: blob:; media-src 'self' blob:"
+</Directory>
+
+<Directory "${TRYHACKX_MEDIA_ROOT}/integrations/php/stage">
+    Options -Indexes -Includes
+    AllowOverride None
+    Require all denied
+
+    <Files "bridge.php">
+        AcceptPathInfo Off
+        Require all granted
+    </Files>
+</Directory>
+
+<LocationMatch "^/media-next-api$">
+    Require all granted
+    # Most sam nazywa swoje cache: „no-store” dla każdej odpowiedzi JSON, godzina
+    # dla okładki, kilkanaście minut dla przekierowania do miniatury. Bezwarunkowe
+    # `always set` dokładało tu DRUGI nagłówek („no-store” obok „private,
+    # max-age=…”), więc przeglądarka nie zachowywała żadnej okładki i każda karta
+    # każdej listy była nowym żądaniem. Z warunkiem Apache dopisuje „no-store”
+    # tylko odpowiedzi, która nie ma własnego `Cache-Control` — także własnej
+    # odmowie (403, 413). Zmierzone na Apache 2.4.65: działa tak samo z modułem
+    # PHP i z FastCGI (`setifempty` bez `always` myli się przy FastCGI i pomija
+    # odmowy Apache).
+    Header always set Cache-Control "no-store" "expr=-z %{resp:Cache-Control}"
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "DENY"
+</LocationMatch>
+
+# Apache przekazuje bajty, ale generowanie pliku i ZIP odbywa się wyłącznie
+# w niezależnym procesie Pythona. Nie są zmieniane globalne limity Apache/PHP.
+ProxyPass "/media-transfer/" "http://127.0.0.1:8765/" connectiontimeout=3 timeout=3600 nocanon
+ProxyPassReverse "/media-transfer/" "http://127.0.0.1:8765/"
+
+<LocationMatch "^/media-transfer(?:/|$)">
+    Require all granted
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "DENY"
+</LocationMatch>
+
+# Zdrowie usługi i zlecanie zadań nie mają prawa być osiągalne z zewnątrz —
+# **osobną regułą**, żeby otwarcie tras transferu nie mogło otworzyć i tych.
+# Trasy transferu chroni podpisany token o krótkim czasie życia, wydawany przez
+# most po sprawdzeniu sesji; te tutaj nie mają czego chronić poza tą regułą.
+#
+# **Ta reguła musi stać PO otwierającej.** Sekcje `<Location*>` scalają się
+# w kolejności z pliku, a przy domyślnym `AuthMerging Off` późniejsze `Require`
+# **zastępuje** wcześniejsze. Gdy ten blok stał wyżej, `Require all granted`
+# kasowało go i `/media-transfer/health/ready` odpowiadało publicznie — tak
+# właśnie wyszło w smoke teście po cutoverze 17.08.2026 (200 zamiast 403).
+<LocationMatch "^/media-transfer/(health|v1/catalog-scan|v1/metadata-worker|v1/title-worker|v1/subtitle-cache|v1/stats)">
+    Require all denied
+</LocationMatch>

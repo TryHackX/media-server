@@ -1,0 +1,361 @@
+/* Motion that is shared across pages: how lists arrive and how a navigation
+   shows that it is under way.
+
+   Two rules hold everywhere here. Only `opacity` and `transform` are animated,
+   because both run on the compositor and neither makes the browser lay the page
+   out again on every frame. And nothing here survives `prefers-reduced-motion`:
+   the blanket reset in pages.css shortens every animation to nothing, and the
+   arrival below is written so that "no animation" simply means "already there". */
+@layer pages {
+  /* --- Lists arrive instead of appearing ---------------------------------------
+     A card grid, a shelf, a row of statistics: each child rises a few pixels
+     into place, the first dozen one after another. `backwards`, not `both`:
+     the starting frame holds during the stagger delay, and once the animation
+     ends it leaves nothing behind — `both` would pin `transform: none` on the
+     element for good and silently kill every hover lift that uses transform.
+     Only the first twelve are staggered. Whatever comes later is below the fold
+     on first paint, or was appended by "load more" — and an appended card that
+     waited behind eleven invisible siblings would look like a slow server.
+
+     Only while the container says it is arriving (`data-entering`, set by
+     `arrive()` in shared/dom.ts for a new listing and taken off again when the
+     last child has landed). The animation used to hang on the containers
+     themselves, so it ran for every child they were ever given: each keystroke
+     in a search box redrew the grid and every card faded in again. */
+  @keyframes surface-enter {
+    from {
+      opacity: 0;
+      transform: translateY(0.5rem) scale(0.985);
+    }
+
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  /* What is added to a listing already on screen ("load more", "Zobacz
+     wszystkie") fades in where it stands: it does not rise, and it does not wait
+     its turn. */
+  @keyframes surface-fade {
+    from {
+      opacity: 0;
+    }
+  }
+
+  :is(.media-grid, .shelf__row, .home-surprise__picks, .collection-browser-grid, .admin-metrics, .admin-catalog, .account-stats)[data-entering] > * {
+    animation: surface-enter 300ms var(--ease-out) backwards;
+    animation-delay: calc(var(--enter-step, 0) * 24ms);
+  }
+
+  :is(.media-grid, .shelf__row, .home-surprise__picks, .collection-browser-grid, .admin-metrics, .admin-catalog, .account-stats) > :nth-child(2) { --enter-step: 1; }
+  :is(.media-grid, .shelf__row, .home-surprise__picks, .collection-browser-grid, .admin-metrics, .admin-catalog, .account-stats) > :nth-child(3) { --enter-step: 2; }
+  :is(.media-grid, .shelf__row, .home-surprise__picks, .collection-browser-grid, .admin-metrics, .admin-catalog, .account-stats) > :nth-child(4) { --enter-step: 3; }
+  :is(.media-grid, .shelf__row, .home-surprise__picks, .collection-browser-grid, .admin-metrics, .admin-catalog, .account-stats) > :nth-child(5) { --enter-step: 4; }
+  :is(.media-grid, .shelf__row, .home-surprise__picks, .collection-browser-grid, .admin-metrics, .admin-catalog, .account-stats) > :nth-child(6) { --enter-step: 5; }
+  :is(.media-grid, .shelf__row, .home-surprise__picks, .collection-browser-grid, .admin-metrics, .admin-catalog, .account-stats) > :nth-child(7) { --enter-step: 6; }
+  :is(.media-grid, .shelf__row, .home-surprise__picks, .collection-browser-grid, .admin-metrics, .admin-catalog, .account-stats) > :nth-child(8) { --enter-step: 7; }
+  :is(.media-grid, .shelf__row, .home-surprise__picks, .collection-browser-grid, .admin-metrics, .admin-catalog, .account-stats) > :nth-child(9) { --enter-step: 8; }
+  :is(.media-grid, .shelf__row, .home-surprise__picks, .collection-browser-grid, .admin-metrics, .admin-catalog, .account-stats) > :nth-child(10) { --enter-step: 9; }
+  :is(.media-grid, .shelf__row, .home-surprise__picks, .collection-browser-grid, .admin-metrics, .admin-catalog, .account-stats) > :nth-child(11) { --enter-step: 10; }
+  :is(.media-grid, .shelf__row, .home-surprise__picks, .collection-browser-grid, .admin-metrics, .admin-catalog, .account-stats) > :nth-child(12) { --enter-step: 11; }
+
+  /* --- A navigation that takes a moment says so -------------------------------
+     The router marks the document while a page loads its code and its first
+     data. Most navigations finish before the 180 ms delay and never show this;
+     a slow one gets a thin line along the top edge that eases towards the end
+     without ever claiming to have reached it. */
+  @keyframes navigation-progress {
+    from {
+      transform: scaleX(0);
+    }
+
+    to {
+      transform: scaleX(0.86);
+    }
+  }
+
+  body::before {
+    position: fixed;
+    inset: 0 0 auto;
+    z-index: 60;
+    height: 2px;
+    background: var(--gradient-signature);
+    box-shadow: var(--glow-accent);
+    content: "";
+    opacity: 0;
+    pointer-events: none;
+    transform: scaleX(0);
+    transform-origin: 0 50%;
+    transition: opacity 260ms var(--ease-standard);
+  }
+
+  html.is-soft-navigating body::before {
+    opacity: 1;
+    animation: navigation-progress 1.8s cubic-bezier(0.08, 0.7, 0.25, 1) 180ms both;
+    transition: opacity 120ms var(--ease-standard) 180ms;
+  }
+
+  /* --- One page gives way to another -------------------------------------------
+     A change of page (router.ts), of place inside a page, or of theme is made
+     inside a view transition (shared/motion.ts): the browser cross-fades a
+     picture of the page as it was into the page as it is. What is the same in
+     both — the sidebar, the header, the player — is the same pixel for pixel
+     throughout, so only what changed is seen to change.
+
+     The two pictures fade against each other with one curve and one duration.
+     They must: the browser adds them up, and two fades that did not mirror each
+     other would dim everything that did not change for the length of the
+     transition. `html[data-vt]` says which kind of change this is.
+
+     Nothing here applies under reduced motion — the script does not start a
+     transition at all then (shared/motion.ts). */
+  @media (prefers-reduced-motion: no-preference) {
+    ::view-transition-old(root),
+    ::view-transition-new(root) {
+      animation-duration: var(--vt-duration, 200ms);
+      animation-timing-function: var(--ease-standard);
+    }
+
+    html[data-vt="swap"] {
+      --vt-duration: 180ms;
+    }
+
+    /* A change of theme is the whole screen changing colour: slower, so it is
+       seen to be meant. */
+    html[data-vt="theme"] {
+      --vt-duration: 380ms;
+    }
+
+    /* The page's title, in a change of page: the old one leaves upwards, the new
+       one arrives from below. Taken out of the picture of the page for that, as
+       a picture of its own that neither stretches nor moves as a box — the two
+       titles are different words of different lengths. */
+    html[data-vt="page"] .topbar__copy {
+      view-transition-name: page-title;
+    }
+
+    ::view-transition-group(page-title) {
+      animation: none;
+    }
+
+    ::view-transition-old(page-title),
+    ::view-transition-new(page-title) {
+      width: auto;
+      height: 100%;
+    }
+
+    ::view-transition-old(page-title) {
+      animation: page-title-leave 120ms var(--ease-exit) both;
+    }
+
+    ::view-transition-new(page-title) {
+      animation: page-title-arrive var(--duration-normal) var(--ease-out) 60ms both;
+    }
+
+    @keyframes page-title-leave {
+      to {
+        opacity: 0;
+        transform: translateY(-0.4rem);
+      }
+    }
+
+    @keyframes page-title-arrive {
+      from {
+        opacity: 0;
+        transform: translateY(0.4rem);
+      }
+    }
+  }
+
+  /* --- Dialogs open and close instead of appearing and vanishing ---------------
+     Every dialog is `display: none` while closed, so `@starting-style` describes
+     the first frame after it opens: the panel rises out of a fade and the
+     backdrop darkens behind it. `translate` and `scale` rather than `transform`:
+     they compose with any transform a panel has instead of replacing it, and a
+     sheet pulled by a finger moves by the same `translate`
+     (shared/sheet-gestures.ts).
+
+     Closing is the same thing backwards and quicker. `display` is allowed to
+     wait for it (`allow-discrete`): the dialog stays drawn for `--dialog-exit`
+     after `aria-hidden` says it is closed, long enough for the panel to fade and
+     the backdrop to clear, and is out of the pointer's way from the first frame.
+     A dialog that is removed from the page rather than hidden waits the same
+     time before it goes (`dismiss()` in shared/motion.ts reads the variable).
+
+     A browser without `@starting-style` or `allow-discrete` shows and hides the
+     dialog at once, exactly as it always did. */
+  .dialog,
+  .viewer {
+    --dialog-exit: var(--duration-exit);
+    transition: display var(--dialog-exit) allow-discrete;
+  }
+
+  .dialog__panel,
+  .viewer__panel {
+    transition:
+      opacity var(--duration-normal) var(--ease-out),
+      translate var(--duration-slow) var(--ease-out),
+      scale var(--duration-slow) var(--ease-out);
+  }
+
+  .dialog__backdrop,
+  .viewer__backdrop {
+    transition: opacity var(--duration-normal) var(--ease-standard);
+  }
+
+  @starting-style {
+    .dialog__panel,
+    .viewer__panel {
+      opacity: 0;
+      translate: 0 0.75rem;
+      scale: 0.98;
+    }
+
+    .dialog__backdrop,
+    .viewer__backdrop {
+      opacity: 0;
+    }
+  }
+
+  :is(.dialog, .viewer)[aria-hidden="true"] {
+    pointer-events: none;
+  }
+
+  :is(.dialog, .viewer)[aria-hidden="true"] :is(.dialog__panel, .viewer__panel) {
+    opacity: 0;
+    scale: 0.98;
+    transition:
+      opacity var(--dialog-exit) var(--ease-exit),
+      translate var(--dialog-exit) var(--ease-exit),
+      scale var(--dialog-exit) var(--ease-exit);
+  }
+
+  :is(.dialog, .viewer)[aria-hidden="true"] :is(.dialog__backdrop, .viewer__backdrop) {
+    opacity: 0;
+    transition: opacity var(--dialog-exit) var(--ease-exit);
+  }
+
+  /* A phone: a dialog is a sheet standing on the bottom edge (library.css lays
+     it out). It comes up from below and goes back down; a thumb on its handle
+     can take it there (shared/sheet-gestures.ts moves it while it is held —
+     `is-dragging` — and lets go to these rules). The film viewer is not a
+     sheet: it is the whole screen. */
+  @media (max-width: 34rem) {
+    .dialog {
+      --dialog-exit: 260ms;
+    }
+
+    .dialog__panel {
+      transition: translate var(--duration-sheet) var(--ease-out);
+    }
+
+    .dialog__panel.is-dragging {
+      transition: none;
+    }
+
+    @starting-style {
+      .dialog__panel {
+        opacity: 1;
+        translate: 0 100%;
+        scale: 1;
+      }
+    }
+
+    .dialog[aria-hidden="true"] .dialog__panel {
+      opacity: 1;
+      translate: 0 100%;
+      scale: 1;
+      transition: translate var(--dialog-exit) var(--ease-exit);
+    }
+  }
+
+  /* --- Small answers to a press -----------------------------------------------
+     A rating given and a favourite marked answer where they were pressed. Under
+     reduced motion neither moves: the stars and the heart simply change colour
+     (shared/motion.ts does not add the classes at all then). */
+  @media (prefers-reduced-motion: no-preference) {
+    /* The stars that were just given fill and lift one after another, left to
+       right (rating.ts marks the row `is-filling` for the moment it takes). */
+    .rating-picker__stars > :nth-child(2) { --star-index: 1; }
+    .rating-picker__stars > :nth-child(3) { --star-index: 2; }
+    .rating-picker__stars > :nth-child(4) { --star-index: 3; }
+    .rating-picker__stars > :nth-child(5) { --star-index: 4; }
+
+    .rating-picker__stars.is-filling > .rating-star-visual::after {
+      transition: clip-path 180ms var(--ease-out);
+      transition-delay: calc(var(--star-index, 0) * 40ms);
+    }
+
+    .rating-picker__stars.is-filling > .rating-star-visual:is([data-fill="full"], [data-fill="half"]) {
+      animation: rating-star-lift 320ms var(--ease-out) backwards;
+      animation-delay: calc(var(--star-index, 0) * 40ms);
+    }
+
+    @keyframes rating-star-lift {
+      40% {
+        scale: 1.28;
+      }
+    }
+
+    /* A favourite: the heart swells and settles, and a ring leaves it. */
+    .is-popping > .icon {
+      animation: heart-pop 320ms var(--ease-out);
+    }
+
+    .is-popping::after {
+      position: absolute;
+      inset: 15%;
+      border: 2px solid currentColor;
+      border-radius: 50%;
+      content: "";
+      pointer-events: none;
+      animation: heart-ring 420ms var(--ease-out) forwards;
+    }
+
+    @keyframes heart-pop {
+      40% {
+        scale: 1.3;
+      }
+    }
+
+    @keyframes heart-ring {
+      from {
+        opacity: 0.6;
+        scale: 0.5;
+      }
+
+      to {
+        opacity: 0;
+        scale: 1.9;
+      }
+    }
+
+    /* --- The navigation drawer of a narrow screen ---------------------------------
+       It slides in from the left (pages.css) over a backdrop that fades; its
+       links follow it in, one after another. Only while it opens: closing takes
+       them with the drawer. */
+    @media (max-width: 64rem) {
+      .app-shell[data-sidebar-open="true"] .nav-list > .nav-link {
+        animation: surface-enter 300ms var(--ease-out) backwards;
+        animation-delay: calc(60ms + var(--link-step, 0) * 60ms);
+      }
+
+      .nav-list > .nav-link:nth-child(2) { --link-step: 1; }
+      .nav-list > .nav-link:nth-child(3) { --link-step: 2; }
+      .nav-list > .nav-link:nth-child(4) { --link-step: 3; }
+      .nav-list > .nav-link:nth-child(5) { --link-step: 4; }
+      .nav-list > .nav-link:nth-child(n + 6) { --link-step: 5; }
+    }
+  }
+
+  /* The blanket reset in pages.css shortens every animation to nothing but keeps
+     its delay, so a staggered card would sit invisible for up to a third of a
+     second and then pop in — the opposite of what reduced motion asks for. */
+  @media (prefers-reduced-motion: reduce) {
+    :is(.media-grid, .shelf__row, .home-surprise__picks, .collection-browser-grid, .admin-metrics, .admin-catalog, .account-stats)[data-entering] > * {
+      animation: none;
+    }
+  }
+
+}

@@ -1,0 +1,93 @@
+Third-party material in the vendored voltviz files
+(from voltviz 0.35.1's THIRD_PARTY_NOTICES.md, the parts that apply to what is vendored here)
+
+voltviz itself is MIT licensed: see LICENSE-voltviz.txt.
+
+Not vendored: the Moss Ball visualizer (shaders from imoss by ledhieu, CC BY-NC 4.0) and the
+Flame visualizer (shader adapted from kuvkar's flame on Shadertoy, CC BY-NC-SA 3.0). Neither
+is MIT licensed, so neither is part of this repository.
+
+
+Halftone Pulse visualizer (visualizers/impl/HalftonePulse.ts)
+--------------------------------------------------------------
+
+The shape library and the image-to-shape grid are ported from "Dither / ASCII Effect Pro" by
+sabosugi (https://codepen.io/sabosugi/pen/bNegbmy). Public CodePen pens are MIT licensed:
+
+  Copyright (c) sabosugi (https://codepen.io/sabosugi)
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy of this software
+  and associated documentation files (the "Software"), to deal in the Software without
+  restriction, including without limitation the rights to use, copy, modify, merge, publish,
+  distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the
+  Software is furnished to do so, subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in all copies or
+  substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING
+  BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+  NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+  DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+
+Icons visualizer (visualizers/impl/Icons.ts)
+--------------------------------------------
+
+Draws 40 icons of Lucide (https://lucide.dev), from the `lucide` package 1.59.0, which voltviz
+renders through lucide-react of the same version. Lucide is licensed under the ISC License:
+
+  ISC License
+
+  Copyright (c) 2026 Lucide Icons and Contributors
+
+  Permission to use, copy, modify, and/or distribute this software for any purpose with or
+  without fee is hereby granted, provided that the above copyright notice and this permission
+  notice appear in all copies.
+
+  THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS
+  SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+  AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+  WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT,
+  NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+  PERFORMANCE OF THIS SOFTWARE.
+
+Eight of them (aperture, compass, crosshair, headphones, key, moon, music, target) are derived
+from Feather (https://github.com/feathericons/feather), licensed under the MIT License:
+
+  The MIT License (MIT)
+
+  Copyright (c) 2013-present Cole Bemis
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy of this software
+  and associated documentation files (the "Software"), to deal in the Software without
+  restriction, including without limitation the rights to use, copy, modify, merge, publish,
+  distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the
+  Software is furnished to do so, subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in all copies or
+  substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING
+  BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+  NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+  DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+
+Dutch municipality boundaries (data/Netherlands_gemeentes.json)
+---------------------------------------------------------------
+
+Generalized municipality boundaries 2023 (gemeente_gegeneraliseerd) of Statistics Netherlands
+(CBS) and Kadaster, published via PDOK under Creative Commons Attribution 4.0 (CC BY 4.0,
+https://creativecommons.org/licenses/by/4.0/). Source: (c) CBS, Kadaster. Used by the Dutch Grid
+visualizers.
+
+
+Trademarks
+----------
+
+Winamp, Windows 95, Disney, Defqon.1, Razor 1911 and other names used for visualizers are
+trademarks of their respective owners. They are used descriptively; neither voltviz nor this
+project is affiliated with or endorsed by them.

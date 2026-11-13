@@ -1,0 +1,128 @@
+# Środowiska i zależności
+.venv/
+venv/
+node_modules/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+*.tsbuildinfo
+npm-debug.log*
+yarn-error.log*
+
+# Prywatna konfiguracja i sekrety — nic z tego nie należy do repozytorium
+config/config.local.toml
+integrations/php/stage/config.local.php
+*.local.toml
+*.local.php
+*.local.json
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+*.pfx
+*.p12
+*.jks
+*.keystore
+secrets.*
+*credentials*
+*.htpasswd
+# Znacznik instalacji przerwanej w połowie (kreator Windows): ścieżki tej maszyny.
+config/installer.pending.json
+
+# Prawdziwe konfiguracje serwera. W repozytorium są **wyłącznie** pliki
+# `.example`; działający host wirtualny niesie nazwę serwera, ścieżki
+# certyfikatu i adresy proxy — czyli dokładnie to, czego nie publikujemy.
+# Wzorzec łapie tylko nazwy kończące się na `.conf`, więc `*.conf.example`
+# zostają śledzone.
+deploy/apache/*.conf
+
+# Dane działającego serwera: cache, dzienniki, kopie, zrzuty bazy — tylko te
+# w katalogu głównym. Bez ukośnika na początku `runtime/` łapało każdy folder
+# o tej nazwie, także kod (frontend/src/.../voltviz/visualizers/runtime/), który
+# przez to nie trafił do repozytorium i czysty klon się nie budował.
+/runtime/
+/logs/
+/backups/
+*.sql
+!migrations/*.sql
+*.sql.gz
+*.dump
+*.bak
+*.old
+*.orig
+*.rej
+*.tmp
+*~
+# Ślady po uruchomieniach — dzienniki i identyfikatory procesów potrafią powstać
+# także poza `logs/` (np. przy sprawdzaniu konfiguracji osobnym `httpd`).
+*.log
+*.pid
+
+# Font Awesome Pro — licencjonowana kopia właściciela. Licencja komercyjna
+# pozwala używać jej na własnym serwerze, ale nie publikować: repozytorium jest
+# publiczne, więc paczka nigdy do niego nie trafia. Build bierze ją, jeśli leży
+# na miejscu (frontend/scripts/icon-packs.mjs); bez niej działa Font Awesome Free.
+frontend/vendor/
+
+# Wynik budowania frontu — powstaje z kodu, więc nie jest kodem
+public/assets/build/
+dist/
+build/
+
+# Materiały multimedialne nigdy nie trafiają do repozytorium, nawet przez pomyłkę
+*.mp3
+*.flac
+*.m4a
+*.wav
+*.ogg
+*.opus
+*.mkv
+*.mp4
+*.avi
+*.mov
+*.m2ts
+# .ts celowo NIE jest tu wymienione: w tym repozytorium to TypeScript,
+# a nie strumień MPEG-TS.
+*.srt
+*.ass
+*.sub
+*.idx
+*.torrent
+*.zip
+*.7z
+*.rar
+*.tar
+*.tar.*
+
+# Notatki robocze i instrukcje wdrożeniowe właściciela — przydatne tu,
+# niepotrzebne nikomu, kto sklonuje repozytorium
+docs/GIT.md
+docs/NEXT-SESSION.md
+docs/TESTING.md
+docs/PROMPT-NEXT.md
+NOTES.md
+TODO.md
+scratch/
+tmp/
+
+# Narzędzia, edytory, system
+.idea/
+.vscode/
+*.code-workspace
+*.swp
+*.swo
+.claude/
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+._*

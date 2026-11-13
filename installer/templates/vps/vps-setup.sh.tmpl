@@ -1,0 +1,651 @@
+#!/usr/bin/env bash
+# {{MARKER}}
+# TryHackX Media Server - reverse proxy na VPS dla {{DOMAIN}} / the reverse proxy on the VPS.
+# Wygenerowane przez {{GENERATOR}} ({{GENERATED}}). Zawiera prawdziwe adresy - nie publikuj.
+#
+#   bash vps-setup.sh                  instalacja albo aktualizacja; mozna powtarzac bez szkody
+#   bash vps-setup.sh --dry-run        tylko pokaz, co zostanie zrobione
+#   bash vps-setup.sh --odnow-start    wymiana certyfikatu domu, etap 1: ufaj staremu i nowemu
+#   bash vps-setup.sh --odnow-koniec   wymiana certyfikatu domu, etap 2: ufaj juz tylko nowemu
+#   bash vps-setup.sh --usun           usun wszystko, co ten skrypt zalozyl (pakiety zostaja)
+#   bash vps-setup.sh --lang en        English messages (--lang pl: polskie)
+#
+# Jeden plik, bez zaleznosci: hosty Apache, strona zastepcza i certyfikat serwera
+# domowego sa zapisane nizej. Skrypt niczego nie pobiera poza pakietami Debiana
+# (apache2, certbot) i certyfikatem Let's Encrypt.
+#
+# Kody wyjscia: 0 - gotowe i strona odpowiada; 3 - VPS jest gotowy, ale serwer
+# domowy jeszcze nie odpowiada (router, zapora, adres); 1 - blad, zmiany cofniete.
+#
+# Komunikaty sa bez polskich znakow celowo: sesja SSH na swiezym VPS-ie czesto
+# nie ma ustawionego UTF-8.
+set -euo pipefail
+
+# `su` without the dash keeps the user's PATH, which has no /usr/sbin (a2enmod, apache2ctl).
+for SBIN in /usr/local/sbin /usr/sbin /sbin; do
+    case ":$PATH:" in *":$SBIN:"*) ;; *) PATH="$PATH:$SBIN" ;; esac
+done
+export PATH
+
+DOMAIN='{{DOMAIN}}'
+SITE='{{SITE}}'
+HOME_TARGET='{{HOME_TARGET}}'
+EXPECTED_FINGERPRINT='{{CERT_SHA256}}'
+# Adres do powiadomien Let's Encrypt (moze byc pusty) i zgoda na regulamin,
+# wyrazona przez wlasciciela w instalatorze serwera domowego (1 = tak).
+ACME_EMAIL='{{ACME_EMAIL}}'
+ACME_AGREE='{{ACME_AGREE}}'
+LANGUAGE='{{LANGUAGE}}'
+MARKER='{{MARKER}}'
+
+# Tylko dla testow: katalog udajacy "/". W prawdziwym uruchomieniu pusty.
+ROOT="${TRYHACKX_VPS_ROOT:-}"
+WEBROOT="$ROOT/var/www/tryhackx-media"
+PIN_DIR="$ROOT/etc/apache2/tryhackx-media"
+PIN_FILE="$PIN_DIR/origin.crt"
+SITES_AVAILABLE="$ROOT/etc/apache2/sites-available"
+SITES_ENABLED="$ROOT/etc/apache2/sites-enabled"
+HTTP_SITE="$SITES_AVAILABLE/$SITE.conf"
+HTTPS_SITE="$SITES_AVAILABLE/$SITE-ssl.conf"
+MAINTENANCE_PAGE="$WEBROOT/maintenance.html"
+LIVE_CERT="$ROOT/etc/letsencrypt/live/$DOMAIN/fullchain.pem"
+RENEW_HOOK="$ROOT/etc/letsencrypt/renewal-hooks/deploy/tryhackx-media-reload.sh"
+BACKUP_ROOT="$ROOT/var/backups/tryhackx-media"
+ERROR_LOG="$ROOT/var/log/apache2/$SITE-error.log"
+
+MODE="install"
+DRY_RUN=0
+CHANGED=0
+ROLLING_BACK=0
+MODULES_CHANGED=0
+EXPLAINED=0
+BACKUP=""
+WORK=""
+HTTP_WAS_ENABLED=0
+HTTPS_WAS_ENABLED=0
+TRACKED=("$HTTP_SITE" "$HTTPS_SITE" "$PIN_FILE" "$MAINTENANCE_PAGE" "$RENEW_HOOK")
+
+say() {
+    if [[ "$LANGUAGE" == "en" ]]; then printf '%s\n' "$2"; else printf '%s\n' "$1"; fi
+}
+
+step() {
+    printf '\n== '
+    say "$1" "$2"
+}
+
+die() {
+    printf '\n' >&2
+    say "BLAD: $1" "ERROR: $2" >&2
+    EXPLAINED=1
+    exit 1
+}
+
+run() {
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+        printf '  (dry-run) %s\n' "$*"
+        return 0
+    fi
+    "$@"
+}
+
+usage() {
+    # The comment block at the top of this file, without the marker line.
+    awk 'NR > 2 && /^#/ { sub(/^# ?/, ""); print; next } NR > 2 { exit }' "${BASH_SOURCE[0]}"
+}
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --dry-run) DRY_RUN=1; shift ;;
+        --odnow-start|--rotate-start) MODE="rotate-start"; shift ;;
+        --odnow-koniec|--rotate-finish) MODE="rotate-finish"; shift ;;
+        --usun|--remove) MODE="remove"; shift ;;
+        --lang)
+            [[ $# -ge 2 && ( "$2" == "pl" || "$2" == "en" ) ]] || { usage >&2; exit 2; }
+            LANGUAGE="$2"; shift 2 ;;
+        -h|--help) usage; exit 0 ;;
+        *) usage >&2; exit 2 ;;
+    esac
+done
+
+# ---------------------------------------------------------------- what travels inside
+
+write_http_site() {
+    cat > "$1" <<'__TRYHACKX_PAYLOAD_HTTP_SITE__'
+{{PAYLOAD_HTTP_SITE}}
+__TRYHACKX_PAYLOAD_HTTP_SITE__
+}
+
+write_https_site() {
+    cat > "$1" <<'__TRYHACKX_PAYLOAD_HTTPS_SITE__'
+{{PAYLOAD_HTTPS_SITE}}
+__TRYHACKX_PAYLOAD_HTTPS_SITE__
+}
+
+write_maintenance_page() {
+    cat > "$1" <<'__TRYHACKX_PAYLOAD_MAINTENANCE__'
+{{PAYLOAD_MAINTENANCE}}
+__TRYHACKX_PAYLOAD_MAINTENANCE__
+}
+
+# The home server's certificate - a certificate, never a key.
+write_origin_certificate() {
+    cat > "$1" <<'__TRYHACKX_PAYLOAD_ORIGIN__'
+{{PAYLOAD_ORIGIN}}
+__TRYHACKX_PAYLOAD_ORIGIN__
+}
+
+write_renew_hook() {
+    cat > "$1" <<__TRYHACKX_HOOK__
+#!/bin/sh
+# $MARKER
+# Po kazdym odnowieniu certyfikatu Let's Encrypt Apache musi go wczytac od nowa.
+systemctl reload apache2
+__TRYHACKX_HOOK__
+}
+
+# ---------------------------------------------------------------- checks
+
+need_root() {
+    [[ "$DRY_RUN" -eq 1 || -n "$ROOT" ]] && return 0
+    if [[ "${EUID:-$(id -u)}" -ne 0 ]]; then
+        die "Uruchom ten skrypt jako root (sudo bash vps-setup.sh)." "Run this script as root (sudo bash vps-setup.sh)."
+    fi
+}
+
+check_system() {
+    local id="" like="" line
+    if [[ -r "$ROOT/etc/os-release" ]]; then
+        while IFS= read -r line; do
+            case "$line" in
+                ID=*) id="${line#ID=}"; id="${id//\"/}" ;;
+                ID_LIKE=*) like="${line#ID_LIKE=}"; like="${like//\"/}" ;;
+            esac
+        done < "$ROOT/etc/os-release"
+    fi
+    if [[ "$id" != "debian" && "$id" != "ubuntu" && " $like " != *" debian "* ]]; then
+        die "To nie wyglada na Debiana ani Ubuntu (ID=$id). Skrypt uzywa apt i ukladu katalogow Apache z Debiana." \
+            "This does not look like Debian or Ubuntu (ID=$id). The script relies on apt and Debian's Apache layout."
+    fi
+    command -v apt-get >/dev/null 2>&1 || die "Brak apt-get." "apt-get is missing."
+}
+
+fingerprint_of() {
+    local printed
+    printed="$(openssl x509 -in "$1" -noout -fingerprint -sha256)"
+    printf '%s\n' "${printed##*=}" | tr '[:lower:]' '[:upper:]'
+}
+
+check_origin_certificate() {
+    local actual
+    actual="$(fingerprint_of "$1")"
+    if [[ "$actual" != "$EXPECTED_FINGERPRINT" ]]; then
+        die "Certyfikat serwera domowego w tym skrypcie jest uszkodzony (odcisk $actual, oczekiwany $EXPECTED_FINGERPRINT). Skopiuj skrypt jeszcze raz." \
+            "The home server's certificate inside this script is damaged (fingerprint $actual, expected $EXPECTED_FINGERPRINT). Copy the script again."
+    fi
+    # Ten certyfikat bedzie dla proxy jedynym zaufanym. Czy OpenSSL tego serwera przyjmuje go
+    # w tej roli, sprawdza sie teraz - zanim cokolwiek zostanie zmienione - a nie po fakcie,
+    # bledem 502 na kazdej stronie.
+    if ! openssl verify -CAfile "$1" "$1" >/dev/null 2>&1; then
+        die "OpenSSL na tym serwerze ($(openssl version 2>/dev/null || true)) nie przyjmuje certyfikatu serwera domowego jako zaufanego - proxy odrzucaloby kazde polaczenie z domem. Niczego nie zmieniono. Zaktualizuj system VPS albo wygeneruj certyfikat domu od nowa." \
+            "OpenSSL on this server ($(openssl version 2>/dev/null || true)) does not accept the home server's certificate as trusted - the proxy would refuse every connection to the home server. Nothing was changed. Upgrade the VPS system or generate the home certificate again."
+    fi
+}
+
+check_dns() {
+    local resolved="" mine="" address found=0 reply
+    resolved="$(getent ahosts "$DOMAIN" 2>/dev/null | awk '{print $1}' | sort -u | tr '\n' ' ')" || true
+    mine="$(hostname -I 2>/dev/null)" || true
+    for address in $resolved; do
+        if [[ " $mine " == *" $address "* ]]; then found=1; fi
+    done
+    if [[ "$found" -eq 1 ]]; then
+        say "  DNS: $DOMAIN wskazuje na ten serwer." "  DNS: $DOMAIN points at this server."
+        return 0
+    fi
+    if [[ -z "${resolved// /}" ]]; then
+        say "  UWAGA: nazwa $DOMAIN nie ma jeszcze rekordu DNS. Bez niego Let's Encrypt nie wyda certyfikatu." \
+            "  WARNING: $DOMAIN has no DNS record yet. Without it Let's Encrypt cannot issue a certificate."
+    else
+        say "  UWAGA: $DOMAIN wskazuje na: $resolved- a ten serwer ma adresy: $mine" \
+            "  WARNING: $DOMAIN points at: $resolved- and this server has the addresses: $mine"
+        say "         (w chmurze z translacja adresow to bywa w porzadku)." \
+            "         (behind a cloud provider's address translation that can be fine)."
+    fi
+    if [[ -s "$LIVE_CERT" || "$DRY_RUN" -eq 1 || ! -t 0 ]]; then
+        return 0
+    fi
+    say "  Kontynuowac mimo to? [t/N]" "  Continue anyway? [y/N]"
+    read -r reply
+    case "$reply" in
+        t|T|tak|y|Y|yes) return 0 ;;
+        *) die "Przerwano. Ustaw rekord DNS i uruchom skrypt ponownie." "Stopped. Set the DNS record and run the script again." ;;
+    esac
+}
+
+# The status this machine answers with for https://DOMAIN<path> (000: nothing listens).
+probe() {
+    local code
+    code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 25 --resolve "$DOMAIN:443:127.0.0.1" "https://$DOMAIN$1" 2>/dev/null)" || true
+    printf '%s\n' "${code:-000}"
+}
+
+# ---------------------------------------------------------------- undo
+
+snapshot() {
+    local index=0 file
+    [[ "$DRY_RUN" -eq 1 ]] && return 0
+    BACKUP="$BACKUP_ROOT/$(date +%Y%m%d-%H%M%S)-$$"
+    mkdir -p "$BACKUP"
+    chmod 0700 "$BACKUP"
+    for file in "${TRACKED[@]}"; do
+        if [[ -f "$file" ]]; then
+            cp -p "$file" "$BACKUP/$index.saved"
+        fi
+        index=$((index + 1))
+    done
+    [[ -e "$SITES_ENABLED/$SITE.conf" ]] && HTTP_WAS_ENABLED=1
+    [[ -e "$SITES_ENABLED/$SITE-ssl.conf" ]] && HTTPS_WAS_ENABLED=1
+    CHANGED=1
+    return 0
+}
+
+rollback() {
+    local index=0 file
+    [[ "$CHANGED" -eq 1 && "$ROLLING_BACK" -eq 0 && "$DRY_RUN" -eq 0 && -n "$BACKUP" ]] || return 0
+    ROLLING_BACK=1
+    say "Cofanie zmian..." "Rolling the changes back..." >&2
+    for file in "${TRACKED[@]}"; do
+        if [[ -f "$BACKUP/$index.saved" ]]; then
+            cp -p "$BACKUP/$index.saved" "$file" || true
+        else
+            rm -f "$file" || true
+        fi
+        index=$((index + 1))
+    done
+    if [[ "$HTTPS_WAS_ENABLED" -eq 0 ]]; then a2dissite -q "$SITE-ssl" >/dev/null 2>&1 || true; fi
+    if [[ "$HTTP_WAS_ENABLED" -eq 0 ]]; then a2dissite -q "$SITE" >/dev/null 2>&1 || true; fi
+    if apache2ctl configtest >/dev/null 2>&1; then
+        systemctl reload apache2 >/dev/null 2>&1 || systemctl restart apache2 >/dev/null 2>&1 || true
+        say "Przywrocono poprzedni stan Apache." "The previous Apache state has been restored." >&2
+    else
+        say "UWAGA: po cofnieciu zmian apache2ctl configtest nadal zglasza blad - sprawdz recznie." \
+            "WARNING: apache2ctl configtest still fails after the rollback - check by hand." >&2
+    fi
+    return 0
+}
+
+finish() {
+    # One place decides what a failed run leaves behind. Whatever ended the script
+    # (a failing command, die, a refusal): if files were changed and the run did
+    # not end well, they go back. Exit code 3 keeps the changes on purpose.
+    local code="$1"
+    trap - EXIT
+    if [[ "$code" -ne 0 && "$code" -ne 3 ]]; then
+        if [[ "$EXPLAINED" -eq 0 ]]; then
+            say "Skrypt przerwany bledem (kod $code) - komunikat powyzej." \
+                "The script stopped on an error (code $code) - see the message above." >&2
+        fi
+        rollback
+    fi
+    if [[ -n "$WORK" && -d "$WORK" ]]; then rm -rf "$WORK"; fi
+    exit "$code"
+}
+
+trap 'finish $?' EXIT
+
+# ---------------------------------------------------------------- pieces
+
+install_marked() {
+    # install_marked WRITER TARGET - the payload with the marker line in front,
+    # so --usun can tell a file of ours from one somebody wrote by hand.
+    local writer="$1" target="$2" staged="$WORK/staged"
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+        printf '  (dry-run) write %s\n' "$target"
+        return 0
+    fi
+    printf '# %s\n' "$MARKER" > "$staged"
+    "$writer" "$staged.body"
+    cat "$staged.body" >> "$staged"
+    install -m 0644 "$staged" "$target"
+    rm -f "$staged" "$staged.body"
+}
+
+install_plain() {
+    local writer="$1" target="$2" mode="$3" staged="$WORK/staged"
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+        printf '  (dry-run) write %s\n' "$target"
+        return 0
+    fi
+    "$writer" "$staged"
+    install -m "$mode" "$staged" "$target"
+    rm -f "$staged"
+}
+
+make_directories() {
+    run install -d -m 0755 "$WEBROOT" "$WEBROOT/.well-known" "$WEBROOT/.well-known/acme-challenge" "$PIN_DIR"
+    run install -d -m 0755 "$(dirname -- "$RENEW_HOOK")"
+}
+
+install_packages() {
+    # Only what is missing: on a VPS that already serves other sites, `apt-get install` of an
+    # installed package would upgrade it (and restart Apache) in the middle of this script.
+    local package missing=()
+    step "Pakiety (apache2, certbot)" "Packages (apache2, certbot)"
+    for package in apache2 certbot curl openssl ca-certificates; do
+        # shellcheck disable=SC2016  # ${Status} is dpkg-query's own placeholder
+        if [[ "$(dpkg-query -W -f='${Status}' "$package" 2>/dev/null)" != *"install ok installed"* ]]; then
+            missing+=("$package")
+        fi
+    done
+    if [[ "${#missing[@]}" -eq 0 ]]; then
+        say "  Wszystkie sa juz zainstalowane." "  All of them are installed already."
+        return 0
+    fi
+    run env DEBIAN_FRONTEND=noninteractive apt-get update
+    run env DEBIAN_FRONTEND=noninteractive apt-get install -y "${missing[@]}"
+}
+
+enable_modules() {
+    local module
+    step "Moduly Apache" "Apache modules"
+    for module in proxy proxy_http ssl headers; do
+        if a2query -q -m "$module" >/dev/null 2>&1; then
+            continue
+        fi
+        run a2enmod -q "$module"
+        MODULES_CHANGED=1
+    done
+}
+
+configtest() {
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+        printf '  (dry-run) apache2ctl configtest\n'
+        return 0
+    fi
+    local output
+    if ! output="$(apache2ctl configtest 2>&1)"; then
+        printf '%s\n' "$output" >&2
+        return 1
+    fi
+    return 0
+}
+
+reload_apache() {
+    # A newly enabled module needs a restart; otherwise a reload keeps connections alive.
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+        printf '  (dry-run) systemctl reload apache2\n'
+        return 0
+    fi
+    if ! systemctl is-active --quiet apache2; then
+        systemctl start apache2
+    elif [[ "$MODULES_CHANGED" -eq 1 ]]; then
+        systemctl restart apache2
+    else
+        systemctl reload apache2
+    fi
+    MODULES_CHANGED=0
+}
+
+open_firewall() {
+    # W lokalizacji C: ufw jest przetlumaczone, a ten warunek czyta jego odpowiedz.
+    if command -v ufw >/dev/null 2>&1 && LC_ALL=C ufw status 2>/dev/null | grep -q '^Status: active'; then
+        step "Zapora (ufw): porty 80 i 443" "Firewall (ufw): ports 80 and 443"
+        run ufw allow 80/tcp
+        run ufw allow 443/tcp
+    fi
+}
+
+obtain_certificate() {
+    local arguments=(certonly --webroot -w "$WEBROOT" -d "$DOMAIN" --keep-until-expiring)
+    step "Certyfikat Let's Encrypt dla $DOMAIN" "The Let's Encrypt certificate for $DOMAIN"
+    if [[ -s "$LIVE_CERT" ]]; then
+        say "  Certyfikat juz jest - certbot odnawia go sam." "  The certificate is already there - certbot renews it by itself."
+        return 0
+    fi
+    if [[ "$ACME_AGREE" == "1" ]]; then
+        arguments+=(--non-interactive --agree-tos)
+        if [[ -n "$ACME_EMAIL" ]]; then
+            arguments+=(-m "$ACME_EMAIL" --no-eff-email)
+        else
+            arguments+=(--register-unsafely-without-email)
+        fi
+    elif [[ "$DRY_RUN" -eq 0 && ! -t 0 ]]; then
+        die "certbot musi zapytac o zgode na regulamin Let's Encrypt - uruchom skrypt w terminalu." \
+            "certbot has to ask you to accept the Let's Encrypt terms - run the script in a terminal."
+    fi
+    run certbot "${arguments[@]}"
+}
+
+split_certificates() {
+    # split_certificates FILE DIRECTORY - one file per certificate: cert-1.pem, cert-2.pem, ...
+    awk -v dir="$2" '/-----BEGIN CERTIFICATE-----/ { n++ } n > 0 { print > (dir "/cert-" n ".pem") }' "$1"
+}
+
+pin_holds_expected() {
+    local folder="$WORK/held" file
+    rm -rf "$folder"
+    mkdir -p "$folder"
+    split_certificates "$1" "$folder"
+    for file in "$folder"/cert-*.pem; do
+        [[ -f "$file" ]] || continue
+        if [[ "$(fingerprint_of "$file")" == "$EXPECTED_FINGERPRINT" ]]; then
+            return 0
+        fi
+    done
+    return 1
+}
+
+check_every_pin_verifies() {
+    # Apache accepts the home server only if its certificate verifies against the
+    # pin file. Asked of the same OpenSSL before the file goes live: with two
+    # certificates of one name in it, both must still be found.
+    local folder="$WORK/verify" file
+    rm -rf "$folder"
+    mkdir -p "$folder"
+    split_certificates "$1" "$folder"
+    for file in "$folder"/cert-*.pem; do
+        [[ -f "$file" ]] || continue
+        if ! openssl verify -CAfile "$1" "$file" >/dev/null 2>&1; then
+            return 1
+        fi
+    done
+    return 0
+}
+
+explain_no_answer() {
+    local code="$1"
+    if [[ -r "$ERROR_LOG" ]] && tail -n 40 "$ERROR_LOG" | grep -q 'certificate verify failed'; then
+        say "  Serwer domowy przedstawil INNY certyfikat niz przypiety tutaj. W domu wygeneruj paczke jeszcze raz i uruchom ten skrypt z nowej paczki." \
+            "  The home server presented a certificate OTHER than the one pinned here. Generate the bundle at home again and run the script from the new bundle."
+        return 0
+    fi
+    case "$code" in
+        502|503|504)
+            say "  VPS jest gotowy, ale serwer domowy ($HOME_TARGET, port 443) nie odpowiada. Sprawdz: przekierowanie portu 443 na routerze, czy komputer w domu dziala, i czy adres domowy sie nie zmienil." \
+                "  The VPS is ready, but the home server ($HOME_TARGET, port 443) does not answer. Check: the router forwards port 443, the computer at home is running, and the home address has not changed." ;;
+        403)
+            say "  Serwer domowy odmawia (403): VPS laczy sie z innego adresu niz podany instalatorowi w domu. Popraw adres VPS w instalatorze domowym." \
+                "  The home server refuses (403): the VPS connects from an address other than the one given to the installer at home. Correct the VPS address there." ;;
+        *)
+            say "  Odpowiedz przez proxy: $code (oczekiwano 200)." "  The answer through the proxy: $code (200 expected)." ;;
+    esac
+}
+
+# ---------------------------------------------------------------- modes
+
+do_install() {
+    local before after internal
+    need_root
+    check_system
+    step "Sprawdzenie" "Checks"
+    WORK="$(mktemp -d)"
+    check_dns
+    before="000"
+    if [[ -e "$SITES_ENABLED/$SITE-ssl.conf" ]]; then before="$(probe /)"; fi
+
+    install_packages
+    # After the packages: only now is OpenSSL certain to be there.
+    write_origin_certificate "$WORK/origin.crt"
+    if command -v openssl >/dev/null 2>&1; then
+        check_origin_certificate "$WORK/origin.crt"
+        say "  Certyfikat serwera domowego: odcisk zgodny." "  The home server's certificate: fingerprint matches."
+    fi
+    enable_modules
+    snapshot
+
+    step "Pliki" "Files"
+    make_directories
+    install_plain write_maintenance_page "$MAINTENANCE_PAGE" 0644
+    install_plain write_origin_certificate "$PIN_FILE" 0644
+    install_marked write_http_site "$HTTP_SITE"
+    install_marked write_https_site "$HTTPS_SITE"
+    install_plain write_renew_hook "$RENEW_HOOK" 0755
+
+    step "Port 80: wyzwanie Let's Encrypt i przekierowanie na HTTPS" "Port 80: the Let's Encrypt challenge and the redirect to HTTPS"
+    run a2ensite -q "$SITE"
+    configtest
+    reload_apache
+    open_firewall
+    obtain_certificate
+
+    step "Port 443: proxy do domu" "Port 443: the proxy home"
+    run a2ensite -q "$SITE-ssl"
+    configtest
+    reload_apache
+
+    step "Proba przez proxy" "A request through the proxy"
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+        printf '  (dry-run) curl --resolve %s:443:127.0.0.1 https://%s/\n' "$DOMAIN" "$DOMAIN"
+        say "Tryb probny: niczego nie zmieniono." "Dry run: nothing was changed."
+        return 0
+    fi
+    after="$(probe /)"
+    if [[ "$after" == "200" ]]; then
+        internal="$(probe /media-transfer/health/ready)"
+        say "  https://$DOMAIN/ odpowiada (200)." "  https://$DOMAIN/ answers (200)."
+        if [[ "$internal" != "403" && "$internal" != "404" ]]; then
+            say "  UWAGA: /media-transfer/health/ready odpowiada $internal zamiast 403 - sprawdz konfiguracje Apache w domu." \
+                "  WARNING: /media-transfer/health/ready answers $internal instead of 403 - check the Apache configuration at home."
+        fi
+        CHANGED=0
+        say "Gotowe." "Done."
+        return 0
+    fi
+    if [[ "$after" == "000" ]]; then
+        die "Apache na tym serwerze nie odpowiada na porcie 443." "Apache on this server does not answer on port 443."
+    fi
+    if [[ "$before" == "200" ]]; then
+        explain_no_answer "$after" >&2
+        die "Przed zmiana strona dzialala, po zmianie odpowiada $after." "The site worked before the change and answers $after after it."
+    fi
+    CHANGED=0
+    explain_no_answer "$after"
+    say "Po poprawce nie trzeba uruchamiac skryptu ponownie - strona zacznie dzialac sama." \
+        "After the fix there is no need to run the script again - the site starts working by itself."
+    exit 3
+}
+
+do_rotate_start() {
+    local before after combined
+    need_root
+    [[ -s "$PIN_FILE" ]] || die "Na tym serwerze nie ma jeszcze przypietego certyfikatu - uruchom skrypt bez opcji." \
+        "No certificate is pinned on this server yet - run the script without options."
+    WORK="$(mktemp -d)"
+    write_origin_certificate "$WORK/origin.crt"
+    check_origin_certificate "$WORK/origin.crt"
+    step "Wymiana certyfikatu domu, etap 1: zaufanie do starego i nowego" "Home certificate rotation, stage 1: trust the old and the new"
+    combined="$WORK/combined.crt"
+    if pin_holds_expected "$PIN_FILE"; then
+        say "  Nowy certyfikat jest juz zaufany - nic do zrobienia." "  The new certificate is trusted already - nothing to do."
+        return 0
+    fi
+    # Both certificates carry the same name (CN=origin), and OpenSSL finds a trust
+    # anchor by name first. Certificates that also name their own key (an authority
+    # key identifier - every certificate either installer makes has one since
+    # 13.11.2026; older Windows ones do not) are
+    # told apart in any order; one that does not is found only in the right place.
+    # So both orders are tried against this machine's OpenSSL BEFORE anything goes
+    # live, and a pair that cannot coexist changes nothing here.
+    cat "$PIN_FILE" "$WORK/origin.crt" > "$combined"
+    if ! check_every_pin_verifies "$combined"; then
+        cat "$WORK/origin.crt" "$PIN_FILE" > "$combined"
+        if ! check_every_pin_verifies "$combined"; then
+            die "OpenSSL na tym serwerze nie potwierdza starego i nowego certyfikatu naraz - niczego nie zmieniono. Zamiast wymiany bez przerwy uruchom skrypt bez opcji (strona zniknie na chwile)." \
+                "OpenSSL on this server does not accept the old and the new certificate at once - nothing was changed. Instead of a rotation run the script without options (the site disappears for a moment)."
+        fi
+    fi
+    before="$(probe /)"
+    snapshot
+    run install -m 0644 "$combined" "$PIN_FILE"
+    configtest
+    reload_apache
+    [[ "$DRY_RUN" -eq 1 ]] && return 0
+    after="$(probe /)"
+    if [[ "$before" == "200" && "$after" != "200" ]]; then
+        die "Po zmianie strona odpowiada $after." "After the change the site answers $after."
+    fi
+    CHANGED=0
+    say "Etap 1 gotowy: VPS ufa obu certyfikatom. Teraz przelacz serwer domowy na nowy certyfikat." \
+        "Stage 1 done: the VPS trusts both certificates. Now switch the home server to the new one."
+}
+
+do_rotate_finish() {
+    local before after
+    need_root
+    [[ -s "$PIN_FILE" ]] || die "Na tym serwerze nie ma przypietego certyfikatu." "No certificate is pinned on this server."
+    WORK="$(mktemp -d)"
+    write_origin_certificate "$WORK/origin.crt"
+    check_origin_certificate "$WORK/origin.crt"
+    step "Wymiana certyfikatu domu, etap 2: zaufanie juz tylko do nowego" "Home certificate rotation, stage 2: trust the new one only"
+    before="$(probe /)"
+    snapshot
+    run install -m 0644 "$WORK/origin.crt" "$PIN_FILE"
+    configtest
+    reload_apache
+    [[ "$DRY_RUN" -eq 1 ]] && return 0
+    after="$(probe /)"
+    if [[ "$before" == "200" && "$after" != "200" ]]; then
+        die "Po zmianie strona odpowiada $after - serwer domowy nadal pokazuje stary certyfikat?" \
+            "After the change the site answers $after - is the home server still presenting the old certificate?"
+    fi
+    CHANGED=0
+    say "Etap 2 gotowy: VPS ufa wylacznie nowemu certyfikatowi." "Stage 2 done: the VPS trusts the new certificate only."
+}
+
+remove_if_ours() {
+    local file="$1"
+    [[ -f "$file" ]] || return 0
+    if grep -qF "$MARKER" "$file"; then
+        run rm -f "$file"
+    else
+        say "  Pominieto $file - nie ma znacznika tego skryptu (plik zalozony recznie)." \
+            "  Skipped $file - it does not carry this script's marker (a file made by hand)."
+    fi
+}
+
+do_remove() {
+    need_root
+    step "Usuwanie konfiguracji proxy dla $DOMAIN" "Removing the proxy configuration for $DOMAIN"
+    run a2dissite -q "$SITE-ssl" || true
+    run a2dissite -q "$SITE" || true
+    remove_if_ours "$HTTPS_SITE"
+    remove_if_ours "$HTTP_SITE"
+    remove_if_ours "$RENEW_HOOK"
+    run rm -f "$PIN_FILE" "$MAINTENANCE_PAGE"
+    run rmdir "$PIN_DIR" 2>/dev/null || true
+    run rm -rf "$WEBROOT/.well-known"
+    run rmdir "$WEBROOT" 2>/dev/null || true
+    if configtest; then
+        reload_apache
+    fi
+    say "Usunieto. Pakiety (apache2, certbot) i certyfikat Let's Encrypt zostaly; certyfikat usuwa: certbot delete --cert-name $DOMAIN" \
+        "Removed. The packages (apache2, certbot) and the Let's Encrypt certificate stay; to delete the certificate: certbot delete --cert-name $DOMAIN"
+}
+
+case "$MODE" in
+    install) do_install ;;
+    rotate-start) do_rotate_start ;;
+    rotate-finish) do_rotate_finish ;;
+    remove) do_remove ;;
+esac

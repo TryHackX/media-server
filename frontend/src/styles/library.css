@@ -1,0 +1,742 @@
+@layer pages {
+  .search-field {
+    display: flex;
+    width: min(24rem, 32vw);
+    min-height: 2.7rem;
+    align-items: center;
+    gap: var(--space-2);
+    padding-inline: var(--space-3);
+    border: 1px solid var(--color-border-control);
+    border-radius: var(--radius-md);
+    background: var(--color-canvas-raised);
+  }
+
+  .topbar-search {
+    min-width: 0;
+    flex: 1;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: var(--color-text);
+  }
+
+  .breadcrumbs {
+    display: flex;
+    min-height: 3rem;
+    align-items: center;
+    gap: var(--space-2);
+    margin-bottom: var(--space-4);
+    overflow-x: auto;
+    color: var(--color-text-muted);
+    scrollbar-width: thin;
+  }
+
+  .breadcrumbs button {
+    flex: 0 0 auto;
+    padding: var(--space-2);
+    border-radius: var(--radius-sm);
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .breadcrumbs button:hover {
+    background: var(--color-surface);
+    color: var(--color-text);
+  }
+
+
+  .rating-picker,
+  .rating-inline {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: var(--space-2);
+    margin-top: var(--space-2);
+    color: var(--color-text-subtle);
+    font-size: 0.72rem;
+  }
+
+  .rating-picker__stars {
+    position: relative;
+    display: grid;
+    width: 6.25rem;
+    height: 1.6rem;
+    flex: 0 0 auto;
+    grid-template-columns: repeat(5, 1.25rem);
+    align-items: center;
+  }
+
+  .rating-picker__stars > .rating-star-visual {
+    justify-self: center;
+    font-size: 1.05rem;
+  }
+
+  /* One slider (shared/rating.ts): the place pressed along the row is the
+     rating. Sideways drags are the row's, vertical ones still scroll the page. */
+  .rating-picker__stars[role="slider"] {
+    border-radius: 0.3rem;
+    cursor: pointer;
+    touch-action: pan-y;
+  }
+
+  .rating-picker__stars[role="slider"]:focus-visible {
+    outline: 0.125rem solid var(--color-focus);
+    outline-offset: 0.15rem;
+  }
+
+  .rating-picker__stars[aria-disabled="true"] {
+    cursor: default;
+  }
+
+  .rating-picker__stars[aria-busy="true"] {
+    opacity: 0.6;
+  }
+
+  /* The row is 26 px tall, which a finger does not hit on purpose. The target
+     grows around it without moving anything: the stars stay where they are and
+     the press is read against their own box. */
+  @media (pointer: coarse) {
+    .rating-picker__stars[role="slider"]::before {
+      position: absolute;
+      inset: -0.6rem -0.3rem;
+      content: "";
+    }
+  }
+
+  .rating-picker__label {
+    min-width: 4.6rem;
+    overflow: hidden;
+    color: var(--color-text-muted);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .rating-inline--summary > span:last-child {
+    margin-left: var(--space-2);
+    color: var(--color-text-muted);
+  }
+  .viewer,
+  .dialog {
+    position: fixed;
+    inset: 0;
+    z-index: 70;
+    display: grid;
+    place-items: center;
+    padding: var(--space-5);
+  }
+
+  .viewer[aria-hidden="true"],
+  .dialog[aria-hidden="true"] {
+    display: none;
+  }
+
+  .viewer__backdrop,
+  .dialog__backdrop {
+    position: absolute;
+    inset: 0;
+    background: var(--color-scrim);
+    cursor: default;
+  }
+
+  .viewer__panel,
+  .dialog__panel {
+    position: relative;
+    display: grid;
+    width: min(100%, 82rem);
+    max-height: calc(100dvh - 2 * var(--space-5));
+    overflow: hidden;
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-xl);
+    background: var(--color-canvas-raised);
+    box-shadow: var(--shadow-float);
+  }
+
+  /* A dialog stands a little above the middle of the screen, where the eye
+     expects it — as far above as there is room for and no further: the free
+     height is shared 1 : 1.15 between the space over the panel and the space
+     under it, so a short question is lifted a little and an editor as tall as
+     the screen not at all. It used to be a fixed `translateY` of up to 2rem,
+     which took a panel already as tall as the screen allows past the top edge:
+     the tag editor stood 5–12 px above it, its frame cut off. */
+  .dialog {
+    grid-template-rows: 1fr auto 1.15fr;
+  }
+
+  .dialog__panel {
+    grid-row: 2;
+    width: min(100%, 42rem);
+  }
+
+  /* A header over one body, and the body is what scrolls. Its row is capped
+     (`minmax(0, 1fr)`): a grid row otherwise grows to whatever is in it, the
+     panel — which hides its overflow — cut the rest off, and nothing scrolled.
+     The tag editor's form ran on under the panel's bottom edge with its "Save"
+     button, out of reach on a 900-pixel screen and on every phone, and a wheel
+     or a finger over it moved the page behind instead. A body scrolled to its
+     end stops there rather than handing the scroll on (`contain`). */
+  .dialog__panel {
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .dialog__panel > :not(.dialog__header) {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .viewer__header,
+  .dialog__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    padding: var(--space-4) var(--space-5);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .viewer__header > div,
+  .dialog__header > div {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  /* Two lines at most. A film without a title in the catalogue is called by its
+     file name — "Series [S01E01] (2023) [1080p] [AVC] [AC-3] [WEB-DL]" — which
+     ran to four lines on a phone, broken in the middle of its bracketed tokens,
+     and pushed the picture down the screen. The full name is on the element's
+     tooltip and in the technical details. */
+  .viewer__header > h2 {
+    display: -webkit-box;
+    min-width: 0;
+    overflow: hidden;
+    overflow-wrap: break-word;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .viewer__actions {
+    flex: 0 0 auto;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .viewer__actions .button {
+    min-width: max-content;
+  }
+
+  /* A dialog that is a few paragraphs, fields and a row of buttons (a question,
+     a guest link). The tag editor and the film viewer bring their own bodies. */
+  .dialog__body {
+    display: grid;
+    gap: var(--space-4);
+    overflow-y: auto;
+    padding: var(--space-5);
+  }
+
+  .dialog__body > p {
+    overflow-wrap: anywhere;
+  }
+
+  .dialog__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--space-3);
+  }
+
+  .dialog__actions > .form-status {
+    flex: 1 1 12rem;
+    margin: 0;
+  }
+
+  /* The body must be allowed to be shorter than what is inside it, or its own
+     `overflow: auto` never fires: a grid item refuses to shrink past its content
+     by default, so it simply grew past the panel, which hides the overflow — and
+     the delivery note under the technical details became unreachable rather than
+     scrollable. The row is capped here and the body scrolls inside it. */
+  .viewer__panel {
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  /* The frame around the scrolling body. It scrolls nothing itself: it is what
+     the "what next" panel is laid over (media-viewer.ts, placeUpNext), so that
+     panel covers the part of the viewer that is on screen and stays there while
+     the body under it is as long as it likes. */
+  .viewer__content {
+    position: relative;
+    display: grid;
+    min-width: 0;
+    min-height: 0;
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  .viewer__loading {
+    padding: var(--space-8) var(--space-5);
+    color: var(--color-text-muted);
+    text-align: center;
+  }
+
+  .viewer__body {
+    display: grid;
+    min-height: min(65dvh, 38rem);
+    place-items: center;
+    overflow-y: auto;
+    background: var(--color-video-black);
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border-strong) transparent;
+  }
+
+  .viewer__body::-webkit-scrollbar {
+    width: 0.55rem;
+  }
+
+  .viewer__body::-webkit-scrollbar-thumb {
+    border: 0.15rem solid transparent;
+    border-radius: var(--radius-md);
+    background: var(--color-border-strong);
+    background-clip: padding-box;
+  }
+
+  .viewer__body::-webkit-scrollbar-thumb:hover {
+    background: var(--color-text-subtle);
+    background-clip: padding-box;
+  }
+
+  .viewer__video-stage {
+    display: grid;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .viewer__compatibility {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-5);
+    border-top: 1px solid var(--color-border);
+    background: var(--color-info-soft);
+    color: var(--color-on-info-soft);
+    font-size: 0.82rem;
+  }
+
+  .viewer__compatibility > .icon {
+    margin-top: 0.1rem;
+  }
+
+  .viewer__compatibility.is-working {
+    border-color: var(--color-warning-border);
+    background: rgb(var(--color-warning-rgb) / 10%);
+    color: var(--color-on-warning-soft);
+  }
+
+  .viewer__compatibility.is-ready {
+    border-color: var(--color-accent-border);
+    background: var(--color-accent-soft);
+    color: var(--color-on-accent-soft);
+  }
+
+  .viewer__compatibility.is-error {
+    border-color: var(--color-danger-border);
+    background: var(--color-danger-soft);
+    color: var(--color-on-danger-soft);
+  }
+
+  .viewer__video,
+  .viewer__image {
+    width: 100%;
+    max-height: 78dvh;
+    object-fit: contain;
+  }
+
+  .viewer__text {
+    width: 100%;
+    min-height: 65dvh;
+    margin: 0;
+    padding: var(--space-6);
+    overflow: auto;
+    /* A long text file is read, not glanced at: a shade under full white. The
+       first line is for an engine without color-mix. */
+    color: var(--color-text);
+    color: color-mix(in srgb, var(--color-text) 75%, var(--color-text-muted));
+    font-family: var(--font-mono);
+    white-space: pre-wrap;
+  }
+
+  .file-inspector {
+    display: grid;
+    max-width: 44rem;
+    justify-items: center;
+    gap: var(--space-4);
+    padding: var(--space-8);
+    text-align: center;
+  }
+
+  .file-inspector > .icon {
+    width: 5rem;
+    height: 5rem;
+    color: var(--color-info);
+    font-size: 4rem;
+  }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-4);
+  }
+
+  .form-note,
+  .empty-copy {
+    color: var(--color-text-muted);
+    font-size: 0.85rem;
+  }
+
+  @media (max-width: 50rem) {
+    .search-field {
+      width: min(15rem, 46vw);
+    }
+
+    .form-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 34rem) {
+    .topbar {
+      flex-wrap: wrap;
+    }
+
+    .topbar__actions,
+    .search-field {
+      width: 100%;
+    }
+
+    .viewer {
+      padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);
+    }
+
+    .viewer__panel {
+      width: 100%;
+      max-height: calc(100dvh - var(--safe-top) - var(--safe-bottom));
+      border-radius: 0;
+    }
+
+    /* A dialog on a phone is a sheet: it stands on the bottom edge, as wide as
+       the screen, as tall as what it holds and never taller than the screen less
+       a strip at the top that shows there is a page behind it. An on-screen
+       keyboard lifts it (`--keyboard-inset`, shared/viewport.ts): the sheet
+       stays whole above the keys instead of keeping its buttons under them.
+       Where it rests on the very edge, the home indicator's strip is its own
+       padding rather than the dialog's, so its surface runs to the bottom. */
+    .dialog {
+      grid-template-rows: 1fr auto 0;
+      place-items: end stretch;
+      padding: var(--safe-top) 0 var(--keyboard-inset, 0px);
+    }
+
+    .dialog__panel {
+      width: 100%;
+      max-height: calc(100dvh - var(--safe-top) - var(--space-5) - var(--keyboard-inset, 0px));
+      padding-bottom: var(--safe-bottom);
+      border-width: 1px 0 0;
+      border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    }
+
+    /* The handle: says the sheet can be pulled, and is where a pull starts. */
+    .dialog__panel::before {
+      position: absolute;
+      top: 0.45rem;
+      left: 50%;
+      z-index: 1;
+      width: 2.5rem;
+      height: 0.25rem;
+      border-radius: 999px;
+      background: var(--color-border-strong);
+      content: "";
+      translate: -50% 0;
+    }
+
+    .dialog__header {
+      padding-top: calc(var(--space-4) + 0.45rem);
+    }
+  }
+
+  .rating-inline--summary {
+    min-height: 2rem;
+    gap: 0.12rem;
+    font-size: 0.82rem;
+  }
+
+  .rating-inline--summary > .rating-star-visual {
+    width: 1.35rem;
+    height: 1.35rem;
+    font-size: 1.25rem;
+  }
+
+  .dialog__panel--compact {
+    width: min(100%, 30rem);
+  }
+
+  .collection-picker {
+    display: grid;
+    gap: var(--space-4);
+    padding: var(--space-5);
+  }
+
+  .collection-picker > p {
+    color: var(--color-text-muted);
+    font-size: 0.86rem;
+  }
+
+  .collection-picker__actions {
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .collection-picker__divider {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    color: var(--color-text-subtle);
+    font-size: 0.72rem;
+  }
+
+  .collection-picker__divider::before,
+  .collection-picker__divider::after {
+    height: 1px;
+    flex: 1;
+    background: var(--color-border);
+    content: "";
+  }
+
+  .collection-picker__create {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--space-2);
+  }
+
+  .viewer-controls {
+    display: grid;
+    border-top: 1px solid var(--color-border);
+    background: rgb(var(--color-canvas-rgb) / 98%);
+  }
+
+  /* play, −10 s, +10 s, the bar, time, mute, volume, full screen */
+  .viewer-controls__primary {
+    display: grid;
+    grid-template-columns: auto auto auto minmax(8rem, 1fr) auto auto minmax(5rem, 8rem) auto;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-5);
+  }
+
+  .viewer-controls__progress-wrap,
+  .viewer-controls__progress,
+  .viewer-controls__volume {
+    width: 100%;
+  }
+
+  /* The wrap takes the pointer and the range only shows the position: a mouse
+     points where it goes, a finger lands there and then seeks finer the higher it
+     is lifted (media-viewer.ts, seek-gesture.ts). Keys and screen readers still
+     work the range itself. The wrap is a taller target than the thin track. */
+  .viewer-controls__progress-wrap {
+    position: relative;
+    display: grid;
+    min-height: 1.75rem;
+    align-items: center;
+    cursor: pointer;
+    touch-action: none;
+  }
+
+  .viewer-controls__progress {
+    pointer-events: none;
+  }
+
+  .viewer-controls__seek-preview {
+    position: absolute;
+    bottom: calc(100% + 0.65rem);
+    left: clamp(1.8rem, calc(var(--seek-progress, 0) * 100%), calc(100% - 1.8rem));
+    z-index: 4;
+    padding: 0.35rem 0.55rem;
+    border: 1px solid rgb(var(--color-highlight-rgb) / 14%);
+    border-radius: var(--radius-sm);
+    background: rgb(var(--color-overlay-rgb) / 90%);
+    color: var(--color-white);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    opacity: 0;
+    pointer-events: none;
+    transform: translate(-50%, 0.25rem);
+    transition: opacity 120ms ease, transform 120ms ease;
+    white-space: nowrap;
+  }
+
+  .viewer-controls__progress-wrap:is(.is-scrubbing, .is-seeking, .is-hovering) .viewer-controls__seek-preview {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+
+  .viewer-controls__time {
+    min-width: 7.5rem;
+    color: var(--color-text-muted);
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    text-align: center;
+  }
+
+  .viewer-controls__primary > .icon,
+  .viewer-controls__tracks .icon {
+    color: var(--color-text-muted);
+  }
+
+  .viewer-controls__tracks {
+    display: flex;
+    min-height: 3rem;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--space-3);
+    padding: 0 var(--space-5) var(--space-3);
+  }
+
+  .viewer-controls__tracks label {
+    display: inline-flex;
+    min-width: min(17rem, 42vw);
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .viewer-controls__tracks select {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .viewer-tracks__note {
+    flex: 1 1 100%;
+    max-width: 42rem;
+    margin: 0 0 0 auto;
+    color: var(--color-text-muted);
+    font-size: 0.7rem;
+    line-height: 1.4;
+    text-align: right;
+  }
+
+  .viewer-controls__track-status {
+    color: var(--color-text-muted);
+    font-size: 0.78rem;
+  }
+
+  @media (max-width: 46rem) {
+    .viewer__header {
+      align-items: flex-start;
+    }
+
+    .viewer__actions {
+      max-width: 55%;
+    }
+
+    /* Only the words go: the icon is a span too, and hiding every span left two
+       empty buttons beside the close button. */
+    .viewer__actions .button > span:not(.icon) {
+      display: none;
+    }
+
+    .viewer-controls__tracks {
+      align-items: stretch;
+      flex-direction: column;
+      padding-inline: var(--space-3);
+    }
+
+    .viewer-controls__tracks label {
+      width: 100%;
+      min-width: 0;
+    }
+  }
+
+  /* A phone, and any touch screen: the bar gets a row of its own across the
+     whole width (it shared one with the buttons and was some 200 px — half a
+     minute a pixel in a two-hour film), the buttons go under it. Full screen
+     stays reachable: until 11.11.2026 a rule here hid the row's last button,
+     which is the full-screen one. The volume slider goes — a phone has keys. */
+  @media (max-width: 46rem), (pointer: coarse) {
+    .viewer-controls__primary {
+      grid-template-columns: auto auto auto minmax(0, 1fr) auto auto;
+      grid-template-areas:
+        "bar bar bar bar bar bar"
+        "play back forward time mute fullscreen";
+      gap: var(--space-2) var(--space-1);
+      padding-inline: var(--space-3);
+    }
+
+    .viewer-controls__primary > .player-control--primary { grid-area: play; }
+    .viewer-controls__skip--back { grid-area: back; }
+    .viewer-controls__skip--forward { grid-area: forward; }
+    .viewer-controls__progress-wrap { grid-area: bar; min-height: 2.75rem; }
+    .viewer-controls__time { grid-area: time; min-width: 0; padding-inline: var(--space-1); text-align: left; white-space: nowrap; }
+    .viewer-controls__mute { grid-area: mute; }
+    .viewer-controls__fullscreen { grid-area: fullscreen; }
+
+    .viewer-controls__primary > .icon,
+    .viewer-controls__volume {
+      display: none;
+    }
+  }
+
+  .viewer__mode-button {
+    max-width: 14rem;
+    min-height: 2.75rem;
+    line-height: 1.15;
+    white-space: nowrap;
+  }
+
+  .viewer__mode-button > .icon {
+    width: 1rem;
+    height: 1rem;
+    flex: 0 0 auto;
+  }
+
+  .viewer__mode-button .button__label {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .icon-button[data-tooltip] {
+    position: relative;
+  }
+
+  .floating-tooltip {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 1000;
+    width: max-content;
+    max-width: min(20rem, calc(100vw - 1.25rem));
+    padding: 0.5rem 0.7rem;
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-md);
+    background: rgb(var(--color-canvas-raised-rgb) / 98%);
+    box-shadow: var(--shadow-float);
+    color: var(--color-text);
+    font-size: 0.72rem;
+    font-weight: 650;
+    line-height: 1.35;
+    opacity: 1;
+    pointer-events: none;
+    text-align: left;
+    transform: translateY(0);
+    transition: opacity 120ms ease, transform 120ms ease;
+  }
+
+  .floating-tooltip[aria-hidden="true"] {
+    opacity: 0;
+    transform: translateY(0.25rem);
+  }
+
+  @media (max-width: 34rem) {
+    .collection-picker__create {
+      grid-template-columns: 1fr;
+    }
+  }
+}

@@ -1,0 +1,750 @@
+@layer pages {
+  /* The library's grid and the cards in it (pages/library/cards.ts,
+     grid-window.ts, previews.ts).
+
+     A card is its picture: a track's cover whole and square, a film's still in
+     16:9 with what the picture is and how long it runs laid on it, a folder's
+     pictures turning over under a small mark in the corner. Pressing the card
+     opens or plays it; the footer holds what is done to it rather than with it.
+
+     The rules for all of it used to stand in four files — pages.css, library.css
+     and refinements.css each undoing a part of the one before — with covers
+     cropped to a strip at three-quarters opacity under a glyph. They are here,
+     once. */
+
+  /* ======================================================================
+     The grid
+     ====================================================================== */
+
+  .media-grid {
+    --card-min: 12rem;
+    --card-ratio: 1;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--card-min)), 1fr));
+    gap: var(--space-4);
+  }
+
+  .media-grid--movies {
+    --card-min: 17rem;
+    --card-ratio: 16 / 9;
+  }
+
+  /* A phone: two cards a row (three once there is room). One column gave every
+     folder a card taller than half the screen, so twelve thousand tracks meant
+     scrolling one cover at a time. */
+  @media (max-width: 46rem) {
+    .media-grid {
+      --card-min: 9rem;
+      gap: var(--space-3);
+    }
+
+    .media-grid--movies {
+      --card-min: 9.5rem;
+    }
+  }
+
+  /* The ends of the window (grid-window.ts): a control that brings the earlier
+     or the later cards, pressed by hand or by scrolling near it. */
+  .media-grid__window-control {
+    width: 100%;
+    min-height: 3.25rem;
+    grid-column: 1 / -1;
+    padding: 0.75rem 1rem;
+    border: 1px dashed var(--color-border-strong);
+    border-radius: var(--radius-lg);
+    background: linear-gradient(90deg, transparent, rgb(var(--color-accent-rgb) / 8%), transparent);
+    color: var(--color-text-muted);
+    cursor: pointer;
+    transition: border-color 180ms ease, color 180ms ease, background-color 180ms ease;
+  }
+
+  .media-grid__window-control:is(:hover, :focus-visible) {
+    border-color: var(--color-accent);
+    background-color: rgb(var(--color-accent-rgb) / 7%);
+    color: var(--color-text);
+  }
+
+  /* ======================================================================
+     The card
+     ====================================================================== */
+
+  .media-card {
+    position: relative;
+    display: grid;
+    min-width: 0;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: var(--color-surface);
+    box-shadow: var(--shadow-card);
+    /* A long listing is hundreds of cards, most of them off screen: they are
+       not laid out or painted until they come near. */
+    content-visibility: auto;
+    contain: layout style paint;
+    contain-intrinsic-size: auto 19rem;
+    isolation: isolate;
+  }
+
+  .media-grid--movies .media-card {
+    contain-intrinsic-size: auto 17rem;
+  }
+
+  /* One scale of elevation: a card at rest casts the card's shadow, a card
+     pointed at adds the theme's glow (nothing in the first theme, a blue halo in
+     the second). Switched, not animated — what moves is the picture. */
+  @media (hover: hover) and (pointer: fine) {
+    .media-card:hover {
+      border-color: var(--color-border-strong);
+      box-shadow: var(--shadow-card), var(--glow-ambient);
+    }
+  }
+
+  .media-card:focus-within {
+    border-color: var(--color-border-strong);
+  }
+
+  /* --- The picture ------------------------------------------------------------------
+     One cell: the button that is the picture, and over it — in its corners —
+     the tick, the mark of what kind of thing this is, the disc that plays it,
+     and a film's facts. Grid placement, not `position: absolute`: the button's
+     pressable area is stretched over the whole card (below), and that takes its
+     bearings from the card. */
+  .media-card__picture,
+  .media-card__open {
+    display: grid;
+    min-width: 0;
+  }
+
+  .media-card__picture > *,
+  .media-card__open > * {
+    grid-area: 1 / 1;
+  }
+
+  /* It clips its picture (which comes a little closer under the pointer); the
+     pressable area below is not its to clip — that one takes its bearings from
+     the card. */
+  .media-card__open {
+    width: 100%;
+    padding: 0;
+    overflow: hidden;
+    background: transparent;
+    cursor: pointer;
+    text-align: inherit;
+  }
+
+  /* Pressed anywhere, the card does what its picture does: the names under the
+     picture are part of the same target. What stands in the footer and in the
+     picture's corners lies over it and keeps its own presses. */
+  .media-card__open::after {
+    position: absolute;
+    inset: 0;
+    content: "";
+  }
+
+  .media-card__open:focus-visible {
+    outline: 0;
+  }
+
+  .media-card:has(.media-card__open:focus-visible) {
+    outline: 0.1875rem solid var(--color-focus);
+    outline-offset: 0.15rem;
+  }
+
+  .media-card__preview {
+    position: relative;
+    display: grid;
+    min-height: 0;
+    aspect-ratio: var(--card-ratio);
+    place-items: center;
+    overflow: hidden;
+    background:
+      radial-gradient(circle at 75% 25%, rgb(var(--color-accent-rgb) / 10%), transparent 40%),
+      var(--color-canvas-raised);
+    color: var(--color-text-subtle);
+  }
+
+  .media-card__preview > .icon {
+    width: 3rem;
+    height: 3rem;
+    font-size: 2.4rem;
+  }
+
+  /* With a picture in, the glyph that stood in for it is gone: it used to show
+     through the cover. */
+  .media-card__preview.has-image > .icon {
+    visibility: hidden;
+  }
+
+  /* The picture as it is. Each one fades in over the one before (a folder's
+     turn over, previews.ts) — opacity and scale only. No `will-change`: it kept
+     a compositing layer alive for every picture on the page, all the time, for
+     a cross-fade that runs once in ten seconds on a few; the browser promotes a
+     layer for the length of a transition by itself. */
+  .media-card__preview .media-preview__image {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0;
+    transform: scale(1.055);
+    transition: opacity 1.65s cubic-bezier(.22, 1, .36, 1), transform 2.1s cubic-bezier(.22, 1, .36, 1);
+  }
+
+  .media-card__preview .media-preview__image.is-active {
+    opacity: 1;
+    transform: scale(1.01);
+  }
+
+  .media-card__preview .media-preview__image.is-leaving {
+    opacity: 0;
+    transform: scale(0.985);
+  }
+
+  /* A picture that is one of several says so with a dot. */
+  .media-card__preview.is-slideshow::after {
+    position: absolute;
+    z-index: 2;
+    top: var(--space-3);
+    right: var(--space-3);
+    width: 0.42rem;
+    height: 0.42rem;
+    border: 1px solid rgb(var(--color-highlight-rgb) / 68%);
+    border-radius: 50%;
+    background: rgb(var(--color-overlay-rgb) / 64%);
+    box-shadow: 0 0 0 0.2rem rgb(var(--color-overlay-rgb) / 34%);
+    content: "";
+  }
+
+  /* --- What lies on the picture --------------------------------------------------- */
+
+  /* What kind of thing the card is — a folder, a playlist — as a small mark in
+     the corner, not a glyph over the middle of the cover. */
+  .media-card__kind {
+    z-index: 3;
+    display: grid;
+    width: 1.9rem;
+    height: 1.9rem;
+    align-self: start;
+    justify-self: start;
+    place-items: center;
+    margin: var(--space-2);
+    border-radius: 0.55rem;
+    background: rgb(var(--color-overlay-rgb) / 74%);
+    color: var(--color-white);
+    pointer-events: none;
+  }
+
+  .media-card__kind .icon {
+    width: 1rem;
+    height: 1rem;
+    font-size: 0.85rem;
+  }
+
+  /* The disc that plays. On a folder or a playlist it is a button of its own
+     (the card walks in, the disc plays); on a track or a film it is part of the
+     picture's own button and only says what a press will do. */
+  .media-card__play {
+    z-index: 3;
+    display: grid;
+    width: clamp(2.25rem, 24%, 2.75rem);
+    aspect-ratio: 1;
+    align-self: end;
+    justify-self: end;
+    place-items: center;
+    margin: var(--space-2);
+    padding: 0;
+    border-radius: 50%;
+    background: var(--color-accent);
+    box-shadow: 0 0.4rem 1rem rgb(var(--color-shadow-rgb) / 45%);
+    color: var(--color-on-accent);
+    opacity: 0;
+    scale: 0.9;
+    transition: opacity var(--duration-fast) var(--ease-standard), scale var(--duration-normal) var(--ease-out);
+  }
+
+  span.media-card__play {
+    pointer-events: none;
+  }
+
+  button.media-card__play {
+    cursor: pointer;
+  }
+
+  .media-card__play .icon {
+    width: 1rem;
+    height: 1rem;
+    font-size: 0.85rem;
+  }
+
+  /* A film's disc stands in the middle of the still. */
+  .media-card--film .media-card__play {
+    width: clamp(2.75rem, 18%, 3.5rem);
+    align-self: center;
+    justify-self: center;
+  }
+
+  .media-card:is(:hover, :focus-within) .media-card__play,
+  .media-card--all .media-card__play {
+    opacity: 1;
+    scale: 1;
+  }
+
+  button.media-card__play:is(:hover, :focus-visible) {
+    background: var(--color-accent-hover);
+    scale: 1.06;
+  }
+
+  /* Nothing hovers under a finger. A disc that is a button of its own has to be
+     there to be pressed; one that only repeats "the picture plays" on every
+     cover of a listing would be forty of them on a screen, and is left out. */
+  @media (hover: none) {
+    button.media-card__play {
+      width: 2.75rem;
+      opacity: 1;
+      scale: 1;
+    }
+
+    span.media-card__play {
+      display: none;
+    }
+
+    .media-card--all span.media-card__play {
+      display: grid;
+    }
+  }
+
+  /* A film's picture, named: 4K, HDR — and how long it runs. */
+  .media-card__marks,
+  .media-card__length {
+    z-index: 3;
+    align-self: end;
+    margin: var(--space-2);
+    pointer-events: none;
+  }
+
+  .media-card__marks {
+    display: flex;
+    justify-self: start;
+    gap: 0.25rem;
+  }
+
+  /* How far this account got into the film (`progress` from the bridge, the start
+     page's rule): a thin line along the foot of the picture, the start page's fill. */
+  .media-card__progress {
+    z-index: 3;
+    align-self: end;
+    justify-self: stretch;
+    height: 0.24rem;
+    overflow: hidden;
+    background: rgb(var(--color-highlight-rgb) / 16%);
+    pointer-events: none;
+  }
+
+  .media-card__progress-fill {
+    display: block;
+    height: 100%;
+    background: var(--gradient-progress);
+    clip-path: inset(0 calc(100% - var(--progress, 0) * 100%) 0 0);
+  }
+
+  .media-card__length {
+    justify-self: end;
+    padding: 0.12rem 0.4rem;
+    border-radius: 0.35rem;
+    background: rgb(var(--color-overlay-rgb) / 74%);
+    color: var(--color-white);
+    font-size: 0.72rem;
+    font-variant-numeric: tabular-nums;
+    font-weight: 650;
+    line-height: 1.3;
+  }
+
+  /* The track that is playing: three bars in the corner of its cover (they run
+     with the music — styles/player.css), and its title in the accent. */
+  .media-card__playing {
+    z-index: 3;
+    align-self: end;
+    justify-self: start;
+    height: 1.9rem;
+    margin: var(--space-2);
+    padding: 0.5rem 0.55rem;
+    border-radius: 0.55rem;
+    background: rgb(var(--color-overlay-rgb) / 78%);
+    pointer-events: none;
+  }
+
+  .media-card.is-playing .media-card__playing {
+    display: inline-flex;
+  }
+
+  .media-card.is-playing .media-card__title {
+    color: var(--color-accent);
+  }
+
+  /* The tick that puts a file among those downloaded together. */
+  .media-check {
+    z-index: 3;
+    display: grid;
+    width: 2rem;
+    height: 2rem;
+    align-self: start;
+    justify-self: start;
+    place-items: center;
+    margin: var(--space-2);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-sm);
+    background: rgb(var(--color-canvas-raised-rgb) / 92%);
+    cursor: pointer;
+  }
+
+  .media-check input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    appearance: none;
+    opacity: 0;
+  }
+
+  .media-check__box {
+    display: inline-grid;
+    width: 1.15rem;
+    height: 1.15rem;
+    place-items: center;
+    border: 1px solid var(--color-border-contrast);
+    border-radius: 0.22rem;
+    background: var(--color-surface);
+    color: var(--color-on-accent);
+  }
+
+  .media-check__box .icon {
+    width: 100%;
+    height: 100%;
+    line-height: 0;
+    opacity: 0;
+  }
+
+  .media-check__box .icon__glyph {
+    width: 0.78rem;
+    height: 0.78rem;
+    line-height: 0.78rem;
+    transform: translate(-0.09rem, -0.065rem);
+  }
+
+  .media-check input:checked + .media-check__box {
+    border-color: var(--color-accent);
+    background: var(--color-accent);
+  }
+
+  .media-check input:checked + .media-check__box .icon {
+    opacity: 1;
+  }
+
+  .media-check:has(input:focus-visible) {
+    outline: 0.1875rem solid var(--color-focus);
+    outline-offset: 0.15rem;
+  }
+
+  /* Out of the way until the card is pointed at or something is ticked — on a
+     screen that can point. A finger gets it always, at a finger's size, and a
+     tick it can see. */
+  @media (hover: hover) and (pointer: fine) {
+    .media-check {
+      opacity: 0;
+      transition: opacity var(--duration-fast) var(--ease-standard);
+    }
+
+    .media-card:is(:hover, :focus-within) .media-check,
+    .media-check:has(input:checked),
+    .media-grid:has(.media-check input:checked) .media-check {
+      opacity: 1;
+    }
+  }
+
+  /* A finger's target is 44 px; what is drawn is only the tick's own box, so
+     a square that size does not sit on every cover of a listing. */
+  @media (pointer: coarse) {
+    .media-check {
+      width: 2.75rem;
+      height: 2.75rem;
+      margin: 0;
+      border-color: transparent;
+      background: transparent;
+    }
+
+    .media-check__box {
+      width: 1.4rem;
+      height: 1.4rem;
+      border-color: rgb(var(--color-highlight-rgb) / 70%);
+      background: rgb(var(--color-overlay-rgb) / 62%);
+    }
+  }
+
+  /* --- The names --------------------------------------------------------------------- */
+
+  .media-card__body {
+    display: grid;
+    min-width: 0;
+    align-content: start;
+    gap: 0.2rem;
+    padding: var(--space-3) var(--space-3) var(--space-2);
+  }
+
+  .media-card__title,
+  .media-card__meta {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .media-card__title {
+    font-size: 0.95rem;
+    font-weight: 650;
+    line-height: 1.3;
+  }
+
+  /* A film's title is its file's name as often as not: two lines of it. */
+  .media-card--film .media-card__title,
+  .media-grid--movies .media-card--folder .media-card__title {
+    display: -webkit-box;
+    overflow-wrap: anywhere;
+    white-space: normal;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+  }
+
+  .media-card__meta {
+    color: var(--color-text-muted);
+    font-size: 0.8rem;
+  }
+
+  .media-card--all {
+    border-color: var(--color-accent-border);
+    background: linear-gradient(180deg, rgb(var(--color-accent-rgb) / 8%), var(--color-surface));
+  }
+
+  .media-card--all .media-card__title {
+    color: var(--color-accent);
+  }
+
+  /* One line of facts: how long, how large, how often. */
+  .media-card__facts {
+    display: flex;
+    min-width: 0;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.1rem 0.35rem;
+    max-height: 1.5em;
+    overflow: hidden;
+    color: var(--color-text-subtle);
+    font-size: 0.75rem;
+    line-height: 1.5;
+  }
+
+  .media-card__facts > * {
+    white-space: nowrap;
+  }
+
+  .media-card__facts > * + *::before {
+    margin-right: 0.35rem;
+    content: "·";
+  }
+
+  .media-card__facts .status-pill {
+    padding: 0 0.45rem;
+    font-size: 0.68rem;
+  }
+
+  .media-card__facts .status-pill::before {
+    content: none;
+  }
+
+  .media-card__plays {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+
+  /* The eye read as glued to the count and sitting above it. Two causes, the same
+     pair the playback queue met: Font Awesome 7 draws its glyphs about 1.25em wide,
+     so a fixed box let the eye spill into the gap on both sides — the box sizes to
+     the glyph instead and the spacing is left to the flex gap. And the glyph's ink
+     is centred on the em square while digits stand on a baseline, so boxes sharing
+     a centre still look misaligned: measured on this line, with the icon at the
+     size of the text, 0.05em down balances it. */
+  .media-card__plays .icon {
+    display: inline-flex;
+    width: auto;
+    height: 1.2em;
+    align-items: center;
+    justify-content: center;
+    font-size: 1em;
+  }
+
+  .media-card__plays .icon__glyph {
+    display: inline-block;
+    width: auto;
+    line-height: 1;
+    transform: translateY(0.05em);
+  }
+
+  /* --- The footer -------------------------------------------------------------------
+     What is done to the thing rather than with it: its stars, its heart, and
+     "⋯" for the rest. It lies over the card's own pressable area. */
+  .media-card__footer {
+    z-index: 2;
+    display: flex;
+    min-width: 0;
+    min-height: 2.5rem;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.15rem;
+    padding: 0 var(--space-2) var(--space-2) var(--space-3);
+  }
+
+  /* The stars hold the row's left end; whatever else there is stands at its right. */
+  .media-card__footer > .rating-picker,
+  .media-card__footer > .rating-inline {
+    min-width: 0;
+    flex: 0 1 auto;
+    margin: 0 auto 0 0;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+
+  /* A track's stars stand alone: how many voted, and their average, is what the
+     row says when pointed at. A folder's carry their average beside them. */
+  .media-card__footer > .rating-picker .rating-picker__label {
+    display: none;
+  }
+
+  .media-card__footer > .rating-picker .rating-picker__stars {
+    width: 5.5rem;
+    grid-template-columns: repeat(5, 1.1rem);
+  }
+
+  .media-card__footer > .rating-inline {
+    gap: 0.1rem;
+    font-size: 0.72rem;
+  }
+
+  .media-card__footer > .rating-inline > span:last-child {
+    margin-left: 0.35rem;
+  }
+
+  .media-card__action {
+    width: 2rem;
+    min-height: 2rem;
+    flex: 0 0 auto;
+    border-color: transparent;
+    background: transparent;
+    color: var(--color-text-muted);
+  }
+
+  .media-card__action:hover:not(:disabled),
+  .media-card__action[aria-expanded="true"] {
+    background: var(--color-surface-hover);
+    color: var(--color-text);
+  }
+
+  .media-card__action .icon {
+    width: 1rem;
+    height: 1rem;
+    font-size: 0.9rem;
+  }
+
+  .media-card__favorite.is-active {
+    color: var(--color-favorite);
+  }
+
+  /* Up and down, in the caller's own hand-arranged playlist. */
+  .media-reorder {
+    display: flex;
+    flex: 0 0 auto;
+  }
+
+  .media-reorder__up .icon__glyph {
+    transform: rotate(-90deg);
+  }
+
+  .media-reorder__down .icon__glyph {
+    transform: rotate(90deg);
+  }
+
+  /* While a list is being arranged its cards' own row holds the two arrows; the
+     stars move behind "⋯" (cards.ts looks at what is shown before it builds the menu). */
+  .media-card.is-reorderable .media-card__footer > .rating-picker {
+    display: none;
+  }
+
+  /* A "⋯" with nothing behind it but the stars is there only when the row has no room for them. */
+  .media-card__more[data-only-stars] {
+    display: none;
+  }
+
+  .media-card.is-reorderable .media-card__more[data-only-stars] {
+    display: inline-flex;
+  }
+
+  /* A finger: 44 px targets, which leaves the row no room for five stars — they
+     stand at the top of the "⋯" menu instead, at a size a thumb can use — nor
+     for the two arrows, which become entries of it. */
+  @media (pointer: coarse) {
+    .media-card__footer {
+      min-height: 2.75rem;
+      padding-left: var(--space-2);
+    }
+
+    .media-card__action {
+      width: 2.75rem;
+      min-height: 2.75rem;
+    }
+
+    .media-card__footer > .rating-picker,
+    .media-card__footer > .media-reorder {
+      display: none;
+    }
+
+    .media-card__more[data-only-stars] {
+      display: inline-flex;
+    }
+
+  }
+
+  /* --- While a listing loads ------------------------------------------------------- */
+  .media-card--skeleton {
+    box-shadow: none;
+    pointer-events: none;
+  }
+
+  .media-card--skeleton .media-card__body {
+    gap: var(--space-2);
+    padding-bottom: var(--space-4);
+  }
+
+  /* --- Motion ------------------------------------------------------------------------- */
+  @media (prefers-reduced-motion: no-preference) {
+    /* The picture comes a little closer when its card is pointed at. */
+    @media (hover: hover) and (pointer: fine) {
+      .media-card__preview {
+        transition: scale var(--duration-slow) var(--ease-out);
+      }
+
+      .media-card__play {
+        transition: opacity var(--duration-fast) var(--ease-standard), scale var(--duration-normal) var(--ease-out);
+      }
+
+      .media-card:hover .media-card__preview {
+        scale: 1.035;
+      }
+    }
+
+    /* Cards that joined a listing already on screen fade in, and nothing more:
+       the stagger is for a new place (shared/dom.ts, `arrive`). */
+    .media-grid > [data-appended] {
+      animation: surface-fade var(--duration-normal) var(--ease-out) backwards;
+    }
+  }
+}

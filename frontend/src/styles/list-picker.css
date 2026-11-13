@@ -1,0 +1,506 @@
+/* The list picker (shared/list-picker.ts), 11.11.2026: a select for long lists — the visualizer
+   panel's presets and packs. A trigger that looks like the panel's selects, and a list that opens
+   in the top layer (a popover: no panel clips it, it stays above a full-screen element) with a
+   search field over it. Only the rows in view exist; each is absolutely placed at its row's
+   height, which is why every row has the same height (--list-picker-row). On a phone the list is
+   a sheet from the bottom edge. */
+
+@layer pages {
+  .list-picker {
+    position: relative;
+    display: inline-flex;
+    min-width: 0;
+  }
+
+  .list-picker__trigger {
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    align-items: center;
+    gap: var(--space-2);
+    padding-inline: var(--space-3) var(--space-2);
+    color: var(--color-text);
+    font: inherit;
+    font-size: 0.85rem;
+    text-align: start;
+    cursor: pointer;
+  }
+
+  .list-picker__trigger:hover:not(:disabled) {
+    border-color: rgb(var(--color-accent-rgb) / 55%);
+  }
+
+  .list-picker__trigger[aria-expanded="true"] {
+    border-color: var(--color-accent);
+  }
+
+  .list-picker__trigger:disabled {
+    color: var(--color-text-muted);
+    cursor: default;
+    opacity: 0.8;
+  }
+
+  .list-picker__value {
+    min-width: 0;
+    flex: 1 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .list-picker__chevron {
+    width: 1rem;
+    height: 1rem;
+    color: var(--color-text-muted);
+    font-size: 0.68rem;
+    rotate: 90deg;
+    transition: rotate var(--duration-fast) var(--ease-standard), color var(--duration-fast) var(--ease-standard);
+  }
+
+  .list-picker__trigger[aria-expanded="true"] .list-picker__chevron {
+    color: var(--color-accent);
+    rotate: -90deg;
+  }
+
+  /* The list. Position and size come from the script (under the trigger, or a sheet). */
+  .list-picker__popover {
+    --list-picker-row: 2.25rem;
+    --list-picker-surface: rgb(var(--color-canvas-raised-rgb) / 96%);
+    position: fixed;
+    z-index: 1000;
+    display: none;
+    inset: auto;
+    max-width: none;
+    max-height: none;
+    margin: 0;
+    padding: 0 0 0.375rem;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-lg);
+    background: var(--list-picker-surface);
+    box-shadow: 0 1.5rem 3.5rem rgb(var(--color-shadow-rgb) / 55%), inset 0 1px 0 rgb(var(--color-highlight-rgb) / 4%);
+    color: var(--color-text);
+    font-size: 0.86rem;
+    line-height: 1.3;
+    /* Inherited from the panel otherwise: its resting toolbar takes pointer events away and its
+       resting picture hides the cursor. */
+    pointer-events: auto;
+    cursor: auto;
+  }
+
+  .list-picker__popover:popover-open {
+    display: flex;
+    animation: list-picker-in 140ms var(--ease-out);
+  }
+
+  /* A browser without popovers: the same box, fixed over the page. */
+  .list-picker__popover.is-open {
+    display: flex;
+  }
+
+  @media (pointer: fine) {
+    .list-picker__popover {
+      --list-picker-surface: rgb(var(--color-canvas-raised-rgb) / 88%);
+      -webkit-backdrop-filter: blur(16px) saturate(1.2);
+      backdrop-filter: blur(16px) saturate(1.2);
+    }
+
+    /* Rows scroll under the pinned heading frosted, not showing through it. */
+    .list-picker__sticky {
+      -webkit-backdrop-filter: blur(10px);
+      backdrop-filter: blur(10px);
+    }
+  }
+
+  @media (pointer: coarse) {
+    .list-picker__popover {
+      --list-picker-row: 2.75rem;
+    }
+  }
+
+  .list-picker__head {
+    display: none;
+    padding: var(--space-2) var(--space-2) var(--space-1);
+  }
+
+  .list-picker__popover.is-searchable .list-picker__head {
+    display: grid;
+  }
+
+  .list-picker__grip {
+    display: none;
+  }
+
+  .list-picker__search-box {
+    display: flex;
+    min-width: 0;
+    min-height: 2.35rem;
+    align-items: center;
+    gap: var(--space-2);
+    padding-inline: var(--space-3) var(--space-1);
+    border: 1px solid var(--color-border-control);
+    border-radius: var(--radius-md);
+    background: rgb(var(--color-overlay-rgb) / 70%);
+    color: var(--color-text-subtle);
+    transition: border-color var(--duration-fast) var(--ease-standard), box-shadow var(--duration-fast) var(--ease-standard);
+  }
+
+  .list-picker__search-box:focus-within {
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 0.2rem rgb(var(--color-accent-rgb) / 16%);
+    color: var(--color-accent);
+  }
+
+  .list-picker__search-box[hidden],
+  .list-picker__clear[hidden],
+  .list-picker__empty[hidden],
+  .list-picker__space > [hidden] {
+    display: none;
+  }
+
+  .list-picker__search {
+    min-width: 5rem;
+    height: 2.2rem;
+    flex: 1 1 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--color-text);
+    font: inherit;
+    outline: 0;
+  }
+
+  /* A text field under 16 px makes iOS zoom the page in when it takes the focus,
+     and leave it zoomed. The trigger follows, to stay level with the selects
+     beside it (components.css does the same for them). */
+  @media (pointer: coarse) {
+    .list-picker__search,
+    .list-picker__trigger {
+      font-size: 1rem;
+    }
+  }
+
+  .list-picker__search::placeholder {
+    color: var(--color-text-subtle);
+  }
+
+  .list-picker__search::-webkit-search-cancel-button {
+    display: none;
+    appearance: none;
+  }
+
+  /* With the other visualizers' matches beside the list's own it can get long: on a phone it gives
+     way (cut short) before the field does. */
+  .list-picker__count {
+    min-width: 0;
+    flex: 0 1 auto;
+    overflow: hidden;
+    padding-inline: var(--space-1);
+    text-overflow: ellipsis;
+    color: var(--color-text-subtle);
+    font-size: 0.74rem;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .list-picker__clear {
+    display: grid;
+    width: 1.8rem;
+    height: 1.8rem;
+    flex: 0 0 auto;
+    place-items: center;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--color-text-muted);
+    cursor: pointer;
+  }
+
+  .list-picker__clear:hover {
+    background: var(--color-surface-hover);
+    color: var(--color-text);
+  }
+
+  .list-picker__list {
+    position: relative;
+    min-height: 0;
+    flex: 1 1 auto;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    outline: 0;
+    scrollbar-color: var(--color-border-strong) transparent;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .list-picker__space {
+    position: relative;
+  }
+
+  .list-picker__space > div {
+    position: absolute;
+    top: 0;
+    right: 0.375rem;
+    left: 0.375rem;
+    contain: layout style;
+  }
+
+  .list-picker__option,
+  .list-picker__heading,
+  .list-picker__note,
+  .list-picker__sticky {
+    display: flex;
+    height: var(--list-picker-row);
+    align-items: center;
+    gap: var(--space-2);
+    padding-inline: var(--space-3);
+    white-space: nowrap;
+  }
+
+  .list-picker__label {
+    min-width: 0;
+    flex: 1 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .list-picker__option {
+    border-radius: var(--radius-sm);
+    color: var(--color-text);
+    cursor: pointer;
+    transition: background-color 90ms ease;
+  }
+
+  .list-picker__option.is-grouped {
+    padding-inline-start: 1.5rem;
+  }
+
+  .list-picker__option:hover {
+    background: var(--color-surface-hover);
+  }
+
+  /* The highlighted option is the list's focus: what Enter takes. */
+  .list-picker__option.is-active {
+    background: var(--color-surface-strong);
+    box-shadow: inset 0 0 0 1px rgb(var(--color-accent-rgb) / 60%);
+  }
+
+  .list-picker__option.is-selected {
+    color: var(--color-accent);
+    font-weight: 650;
+  }
+
+  .list-picker__heading,
+  .list-picker__sticky {
+    color: var(--color-text-muted);
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+
+  /* A heading is a label and a hairline to the edge. */
+  .list-picker__heading::after,
+  .list-picker__sticky::after {
+    height: 1px;
+    min-width: var(--space-4);
+    flex: 1 1 0;
+    background: var(--color-border);
+    content: "";
+  }
+
+  .list-picker__heading .list-picker__label {
+    flex: 0 1 auto;
+  }
+
+  /* The group of the rows at the top, pinned while they scroll under it. */
+  .list-picker__sticky {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    margin-bottom: calc(-1 * var(--list-picker-row));
+    padding-inline: calc(0.375rem + var(--space-3));
+    overflow: hidden;
+    background: var(--list-picker-surface);
+    text-overflow: ellipsis;
+    visibility: hidden;
+  }
+
+  .list-picker__sticky.is-shown {
+    visibility: visible;
+  }
+
+  /* The search across the visualizers (11.11.2026): each visualizer's results under its name, a
+     stronger heading than a pack's; beside each preset the heading it has in its own list. */
+  .list-picker__heading.is-section,
+  .list-picker__sticky.is-section {
+    color: var(--color-accent);
+    font-size: 0.72rem;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+  }
+
+  .list-picker__heading.is-section::after,
+  .list-picker__sticky.is-section::after {
+    background: rgb(var(--color-accent-rgb) / 35%);
+  }
+
+  .list-picker__detail {
+    min-width: 0;
+    max-width: 55%;
+    flex: 0 1 auto;
+    overflow: hidden;
+    color: var(--color-text-subtle);
+    font-size: 0.76rem;
+    font-weight: 400;
+    text-overflow: ellipsis;
+  }
+
+  .list-picker__detail[hidden] {
+    display: none;
+  }
+
+  /* "Pokaż jeszcze 260": opens the rest of a visualizer's results in place. */
+  .list-picker__option.is-action {
+    color: var(--color-accent);
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
+
+  /* "Szukanie w innych wizualizacjach…": a quiet line, not a choice. */
+  .list-picker__note {
+    padding-inline: var(--space-3);
+    color: var(--color-text-subtle);
+    font-size: 0.8rem;
+    font-style: italic;
+    animation: list-picker-note 1.6s ease-in-out infinite alternate;
+  }
+
+  @keyframes list-picker-note {
+    from {
+      opacity: 0.55;
+    }
+
+    to {
+      opacity: 1;
+    }
+  }
+
+  .list-picker__mark {
+    display: none;
+    width: 1rem;
+    height: 1rem;
+    font-size: 0.72rem;
+  }
+
+  .list-picker__option.is-playing .list-picker__mark--playing,
+  .list-picker__option.is-favorite .list-picker__mark--favorite,
+  .list-picker__option.is-selected .list-picker__mark--selected {
+    display: inline-grid;
+  }
+
+  .list-picker__mark--playing {
+    color: var(--color-accent);
+  }
+
+  .list-picker__mark--favorite {
+    color: var(--color-warning);
+  }
+
+  .list-picker__mark--selected {
+    color: var(--color-accent);
+  }
+
+  .list-picker__empty {
+    position: absolute;
+    top: 50%;
+    right: 0;
+    left: 0;
+    margin: 0;
+    padding: var(--space-4);
+    color: var(--color-text-muted);
+    text-align: center;
+    text-wrap: balance;
+  }
+
+  /* A phone: a sheet from the bottom edge, rows a finger can hit, the page dimmed behind it. */
+  .list-picker__popover.is-sheet {
+    --list-picker-row: 2.85rem;
+    --list-picker-surface: rgb(var(--color-canvas-raised-rgb) / 98%);
+    right: 0;
+    left: 0;
+    width: 100%;
+    padding-bottom: var(--safe-bottom);
+    border-width: 1px 0 0;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    font-size: 0.95rem;
+  }
+
+  .list-picker__popover.is-sheet:popover-open {
+    animation: list-picker-sheet-in 220ms var(--ease-out);
+  }
+
+  .list-picker__popover.is-sheet::backdrop {
+    background: rgb(var(--color-overlay-rgb) / 55%);
+  }
+
+  .list-picker__popover.is-sheet .list-picker__head {
+    display: grid;
+    padding-top: var(--space-1);
+  }
+
+  .list-picker__popover.is-sheet .list-picker__grip {
+    display: block;
+    width: 2.5rem;
+    height: 0.3rem;
+    margin: 0.2rem auto var(--space-2);
+    border-radius: 999px;
+    background: var(--color-border-strong);
+  }
+
+  /* 16 px at least: a smaller field makes iOS zoom the page in when it takes the focus. */
+  .list-picker__popover.is-sheet .list-picker__search {
+    font-size: 1rem;
+  }
+
+  .list-picker__popover.is-sheet .list-picker__space > div {
+    right: var(--space-2);
+    left: var(--space-2);
+  }
+
+  .list-picker__popover.is-sheet .list-picker__sticky {
+    padding-inline: calc(var(--space-2) + var(--space-3));
+  }
+
+  @keyframes list-picker-in {
+    from {
+      opacity: 0.35;
+      transform: translateY(-0.3rem);
+    }
+  }
+
+  @keyframes list-picker-sheet-in {
+    from {
+      transform: translateY(40%);
+      opacity: 0.4;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .list-picker__popover:popover-open,
+    .list-picker__popover.is-sheet:popover-open {
+      animation: none;
+    }
+
+    .list-picker__chevron,
+    .list-picker__option {
+      transition: none;
+    }
+
+    .list-picker__note {
+      animation: none;
+    }
+  }
+}

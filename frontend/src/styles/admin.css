@@ -1,0 +1,1861 @@
+@layer pages {
+  /* `minmax(0, 1fr)` rather than the implicit `auto` column: an auto column grows
+     to the widest thing in it, and the section switcher is deliberately a row
+     that does not wrap. On a phone it pushed the whole administration page to
+     510 px — sideways scrolling, 46 elements off screen — and the scrolling the
+     switcher was built for never started, because its box was never narrower
+     than its contents. */
+  .account-page,
+  .admin-page {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-5);
+  }
+
+  /* The section switcher of the account page and of the panel
+     (shared/section-tabs.ts): a row of pills that wraps inside its own column,
+     with the refresh button at the end of the last line. */
+  .admin-subnav-bar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: var(--color-surface);
+    /* Keeps the section switcher reachable while a long list is scrolled. */
+    position: sticky;
+    top: var(--space-3);
+    z-index: 3;
+  }
+
+  /* A little tight: nine sections fit in two rows beside the refresh button at
+     a laptop's width, where they used to leave one section alone on a third. */
+  .admin-subnav {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1) var(--space-2);
+    min-width: 0;
+  }
+
+  .admin-subnav__item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.45rem 0.8rem;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--color-text-muted);
+    font: inherit;
+    font-size: 0.86rem;
+    cursor: pointer;
+    transition: background 160ms ease, color 160ms ease, border-color 160ms ease;
+  }
+
+  .admin-subnav__item:hover {
+    border-color: var(--color-border-strong);
+    color: var(--color-text);
+  }
+
+  .admin-subnav__item.is-active {
+    border-color: var(--color-accent);
+    background: var(--color-accent-soft);
+    box-shadow: 0 0 0 1px rgb(var(--color-accent-rgb) / 18%), 0 0.4rem 1.2rem rgb(var(--color-accent-rgb) / 12%);
+    color: var(--color-accent);
+  }
+
+  /* The mark of the open section is one element that slides from the section
+     that was open to the one that is (section-tabs.ts places it and says so
+     with `data-pill`); the button under it then keeps only its colour. Without
+     the script's mark the button draws the same look itself, as above. */
+  .admin-subnav__pill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    border: 1px solid var(--color-accent);
+    border-radius: 999px;
+    background: var(--color-accent-soft);
+    box-shadow: 0 0 0 1px rgb(var(--color-accent-rgb) / 18%), 0 0.4rem 1.2rem rgb(var(--color-accent-rgb) / 12%);
+    pointer-events: none;
+  }
+
+  .admin-subnav__pill[hidden] {
+    display: none;
+  }
+
+  .admin-subnav[data-pill] .admin-subnav__item {
+    position: relative;
+  }
+
+  .admin-subnav[data-pill] .admin-subnav__item.is-active {
+    border-color: transparent;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .admin-subnav-bar__reload {
+    margin-left: auto;
+    border-radius: 999px;
+  }
+
+  /* A phone: the row scrolls sideways, and says so. Each section keeps its name
+     under its icon (icons alone were nine pictograms to decode), the one being
+     opened is brought to the middle (section-tabs.ts), and the end with more
+     beyond it fades out instead of stopping in half a button. */
+  @media (max-width: 48rem) {
+    .admin-subnav {
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      overscroll-behavior-x: contain;
+      scroll-snap-type: x proximity;
+      scrollbar-width: none;
+    }
+
+    .admin-subnav::-webkit-scrollbar {
+      display: none;
+    }
+
+    .admin-subnav__item,
+    .admin-subnav-bar__reload {
+      min-width: 4.25rem;
+      min-height: 3.25rem;
+      flex: 0 0 auto;
+      flex-direction: column;
+      justify-content: center;
+      gap: 0.25rem;
+      padding: var(--space-2);
+      border-radius: var(--radius-md);
+      font-size: 0.72rem;
+      scroll-snap-align: center;
+    }
+
+    .admin-subnav__pill {
+      border-radius: var(--radius-md);
+    }
+
+    .admin-subnav__label {
+      display: block;
+      max-width: 6.5rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .admin-subnav-bar[data-more-end] .admin-subnav {
+      -webkit-mask-image: linear-gradient(to right, var(--color-black) calc(100% - 2.5rem), transparent);
+      mask-image: linear-gradient(to right, var(--color-black) calc(100% - 2.5rem), transparent);
+    }
+
+    .admin-subnav-bar[data-more-start] .admin-subnav {
+      -webkit-mask-image: linear-gradient(to left, var(--color-black) calc(100% - 2.5rem), transparent);
+      mask-image: linear-gradient(to left, var(--color-black) calc(100% - 2.5rem), transparent);
+    }
+
+    .admin-subnav-bar[data-more-start][data-more-end] .admin-subnav {
+      -webkit-mask-image: linear-gradient(to right, transparent, var(--color-black) 2.5rem, var(--color-black) calc(100% - 2.5rem), transparent);
+      mask-image: linear-gradient(to right, transparent, var(--color-black) 2.5rem, var(--color-black) calc(100% - 2.5rem), transparent);
+    }
+
+    .admin-subnav-bar__reload {
+      margin-left: 0;
+    }
+  }
+
+  .admin-stage {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-5);
+  }
+
+  .admin-stage[aria-busy="true"] {
+    opacity: 0.55;
+    transition: opacity 160ms ease;
+  }
+
+  /* The metadata queue card: counts across the top, the one action underneath. */
+  .admin-card {
+    display: grid;
+    gap: var(--space-4);
+    padding: var(--space-4);
+  }
+
+  .admin-card__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  /* The files behind the "failed" counter: folded until asked for, one row per
+     file, the reason in full — it is what the operator came to read. */
+  .admin-failures {
+    min-width: 0;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: var(--color-surface);
+  }
+
+  .admin-failures > summary {
+    padding: var(--space-3) var(--space-4);
+    cursor: pointer;
+    font-weight: 600;
+  }
+
+  .admin-failures__list {
+    display: grid;
+    margin: 0;
+    padding: 0 var(--space-4) var(--space-4);
+    gap: var(--space-3);
+    list-style: none;
+  }
+
+  .admin-failures__row {
+    display: grid;
+    min-width: 0;
+    padding-top: var(--space-3);
+    gap: var(--space-1);
+    border-top: 1px solid var(--color-border);
+  }
+
+  .admin-failures__row.is-resolved {
+    opacity: 0.7;
+  }
+
+  .admin-failures__reason {
+    font-weight: 500;
+    overflow-wrap: anywhere;
+  }
+
+  /* The audit trail: filters on one line, details clipped so one long payload
+     cannot stretch the table past the panel. */
+  .admin-activity__filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    gap: var(--space-3);
+  }
+
+  .admin-activity__details {
+    max-width: 22rem;
+    overflow: hidden;
+    color: var(--color-text-muted);
+    font-size: 0.78rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .admin-catalog {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+    gap: var(--space-4);
+  }
+
+  .account-stat,
+  .admin-metric,
+  .admin-catalog__card {
+    min-width: 0;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background:
+      radial-gradient(circle at 100% 0, rgb(var(--color-accent-rgb) / 7%), transparent 46%),
+      var(--color-surface);
+    box-shadow: var(--shadow-card);
+  }
+
+  .account-stat {
+    display: grid;
+    grid-template-columns: 2.75rem minmax(0, 1fr);
+    align-items: center;
+    gap: var(--space-1) var(--space-3);
+    padding: var(--space-5);
+  }
+
+  .account-stat > .icon,
+  .admin-metric__icon,
+  .admin-catalog__icon {
+    display: grid;
+    width: 2.75rem;
+    height: 2.75rem;
+    grid-row: 1 / span 2;
+    place-items: center;
+    border: 1px solid var(--color-accent-border);
+    border-radius: var(--radius-md);
+    background: var(--color-accent-soft);
+    color: var(--color-accent);
+  }
+
+  .account-stat > .icon .icon__glyph,
+  .admin-metric__icon .icon__glyph,
+  .admin-catalog__icon .icon__glyph {
+    font-size: 1.15rem;
+    line-height: 1;
+  }
+
+  .account-stat strong,
+  .admin-metric strong,
+  .admin-catalog__card > strong {
+    min-width: 0;
+    font-size: clamp(1.55rem, 3vw, 2rem);
+    line-height: 1;
+  }
+
+  .account-stat span,
+  .admin-metric span,
+  .admin-catalog__card p {
+    color: var(--color-text-muted);
+  }
+
+  .account-columns {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-5);
+  }
+
+  .account-activity,
+  .account-profile {
+    display: grid;
+    gap: var(--space-4);
+    align-items: center;
+    padding: var(--space-5);
+  }
+
+  .account-profile__link-row,
+  .account-profile__browser {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .account-profile__link {
+    min-width: 0;
+  }
+
+  .dialog__panel--profile-share {
+    width: min(44rem, calc(100vw - 2rem));
+  }
+
+  .dialog__panel--profile-share .account-profile__link-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .dialog__panel--profile-share .account-profile__link-row .button {
+    white-space: nowrap;
+  }
+
+  .account-profile__share-dialog {
+    display: grid;
+    gap: var(--space-4);
+    padding: var(--space-5);
+  }
+
+  .account-profile__visibility {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    font-weight: 700;
+  }
+
+  .account-profile__share-actions {
+    display: flex;
+    justify-content: center;
+  }
+
+  .admin-settings__visualizers {
+    display: grid;
+    min-width: 0;
+    grid-column: 1 / -1;
+    gap: var(--space-3);
+    margin-top: var(--space-5);
+  }
+
+  .admin-visualizers {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 31rem), 1fr));
+    gap: var(--space-2);
+  }
+
+  .admin-visualizer {
+    position: relative;
+    display: grid;
+    grid-template-columns: 2.4rem 1.5rem minmax(9rem, 1fr) minmax(7rem, auto) auto;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    background: var(--color-surface);
+  }
+
+  .admin-visualizer > strong {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .admin-visualizer__position {
+    color: var(--color-text-muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .admin-visualizer__drag {
+    display: grid;
+    width: 2.35rem;
+    height: 2.35rem;
+    place-items: center;
+    padding: 0;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-canvas-raised);
+    color: var(--color-text-muted);
+    cursor: grab;
+    touch-action: none;
+  }
+
+  .admin-visualizer__drag:active { cursor: grabbing; }
+  .admin-visualizer.is-dragging { opacity: 0.42; }
+  .admin-visualizers.is-reordering .admin-visualizer:not(.is-dragging) {
+    border-color: rgb(var(--color-accent-rgb) / 42%);
+    border-style: dashed;
+  }
+
+  .admin-visualizer.is-drop-before::before,
+  .admin-visualizer.is-drop-after::after {
+    position: absolute;
+    right: 0.35rem;
+    left: 0.35rem;
+    height: 0.2rem;
+    border-radius: 999px;
+    background: var(--color-accent);
+    box-shadow: 0 0 0.7rem rgb(var(--color-accent-rgb) / 65%);
+    content: "";
+    pointer-events: none;
+    z-index: 5;
+  }
+
+  .admin-visualizer.is-drop-before::before { top: 0.12rem; }
+  .admin-visualizer.is-drop-after::after { bottom: 0.12rem; }
+
+  .admin-visualizer__actions {
+    display: flex;
+    min-width: 0;
+    gap: var(--space-1);
+  }
+
+  .admin-visualizer__enabled {
+    min-width: 0;
+    white-space: nowrap;
+  }
+
+  @media (max-width: 43rem) {
+    .admin-visualizer {
+      grid-template-columns: 2.4rem 1.5rem minmax(0, 1fr);
+    }
+
+    .admin-visualizer__enabled,
+    .admin-visualizer__actions {
+      grid-column: 3;
+    }
+  }
+
+  .account-profile__search {
+    position: relative;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .account-profile__suggestions {
+    position: absolute;
+    top: calc(100% + 0.3rem);
+    right: 0;
+    left: 0;
+    z-index: 25;
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+    box-shadow: var(--shadow-card);
+  }
+
+  .account-profile__suggestions:empty {
+    display: none;
+  }
+
+  .account-profile__suggestions a {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-3);
+  }
+
+  .account-profile__suggestions a:hover {
+    background: var(--color-surface-hover);
+  }
+
+  .account-panel,
+  .admin-section {
+    display: grid;
+    min-width: 0;
+    gap: var(--space-4);
+    padding: var(--space-5);
+  }
+
+  .account-panel--collections {
+    overflow: hidden;
+  }
+
+  .section-heading > div {
+    display: grid;
+    gap: var(--space-1);
+  }
+
+  .account-list {
+    display: grid;
+  }
+
+  .account-entry {
+    display: grid;
+    min-width: 0;
+    grid-template-columns: 2.5rem minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--space-3);
+    padding-block: var(--space-3);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .account-entry:last-child {
+    border-bottom: 0;
+  }
+
+  .account-entry:hover .account-entry__copy strong {
+    color: var(--color-accent);
+  }
+
+  .account-entry__icon,
+  .collection-card__icon {
+    display: grid;
+    width: 2.5rem;
+    height: 2.5rem;
+    place-items: center;
+    border-radius: var(--radius-md);
+    background: var(--color-accent-soft);
+    color: var(--color-accent);
+  }
+
+  .account-entry__icon .icon,
+  .collection-card__icon .icon {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  .account-entry__copy,
+  .account-entry__copy strong,
+  .account-entry__copy small,
+  .collection-card__copy,
+  .collection-card__copy strong,
+  .collection-card__copy small {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* What its author wrote about the list may run to a second line. */
+  .collection-card__copy .collection-card__description {
+    display: -webkit-box;
+    white-space: normal;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .account-entry__copy small,
+  .collection-card__copy small {
+    margin-top: var(--space-1);
+    color: var(--color-text-muted);
+  }
+
+  .account-entry__artist {
+    display: block;
+    overflow: hidden;
+    margin-top: var(--space-1);
+    color: var(--color-text);
+    font-size: 0.82rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Wider cards, and each in two rows: what the list is, and under it what can
+     be done with it. Side by side, three buttons and an arrow left the name 88
+     pixels of a 341 px card. */
+  .collection-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 24rem), 1fr));
+    gap: var(--space-3);
+  }
+
+  .collection-card {
+    display: grid;
+    min-width: 0;
+    grid-template-columns: minmax(0, 1fr);
+    align-content: space-between;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-canvas-raised);
+  }
+
+  .collection-card__link {
+    display: grid;
+    min-width: 0;
+    grid-template-columns: 2.5rem minmax(0, 1fr);
+    align-items: start;
+    gap: var(--space-3);
+    padding: var(--space-3);
+  }
+
+  /* One background worker: what it does, and the one control that starts it.
+     Same shape for every panel in Indexing, so the section reads as a list of
+     jobs rather than a pile of unrelated forms. */
+  .admin-worker {
+    display: grid;
+    gap: var(--space-3);
+    padding: var(--space-4);
+  }
+
+  .admin-worker__heading h3 {
+    margin: 0 0 var(--space-1);
+    font-size: 0.95rem;
+  }
+
+  .admin-worker__heading p {
+    margin: 0;
+    font-size: 0.82rem;
+  }
+
+  .admin-worker__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  .admin-worker__actions .input {
+    width: auto;
+    min-width: 12rem;
+  }
+
+  .collection-card__edit {
+    display: grid;
+    grid-column: 1 / -1;
+    gap: var(--space-3);
+    padding: var(--space-3);
+  }
+
+  .collection-card__edit-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  /* The playlist's own queue settings: a named group inside the edit form, so
+     "Rating" here is not read as another property of the list itself. One
+     column, measured rather than assumed — the form sits inside a card of the
+     collections grid and is 387 px wide even on a 1600 px screen, and two
+     columns of that would cut «As the listener has set it» in half. */
+  .collection-card__queue {
+    display: grid;
+    gap: var(--space-2);
+    padding: var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-canvas-raised);
+  }
+
+  .account-security__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+    gap: var(--space-5);
+  }
+
+  .account-security__form {
+    display: grid;
+    align-content: start;
+    gap: var(--space-3);
+    padding: var(--space-4);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-canvas-raised);
+  }
+
+  .account-security__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  /* Hand-drawn SVG, so it takes its colours from the theme instead of carrying
+     a palette of its own. The viewBox is stretched to the panel width — the
+     shape is a trend, not a measurement anybody reads off the pixels. */
+  .stats-chart {
+    display: grid;
+    gap: var(--space-2);
+    margin: 0;
+    padding: var(--space-4);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-canvas-raised);
+  }
+
+  .stats-chart svg {
+    width: 100%;
+    height: 7.5rem;
+  }
+
+  .stats-chart__area {
+    fill: var(--color-accent-soft);
+  }
+
+  .stats-chart__line {
+    fill: none;
+    stroke: var(--color-accent);
+    stroke-width: 2;
+    stroke-linejoin: round;
+    vector-effect: non-scaling-stroke;
+  }
+
+  .stats-chart__caption {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-3);
+    color: var(--color-text-muted);
+    font-size: 0.82rem;
+  }
+
+  .stats-chart__peak {
+    color: var(--color-accent);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* One row per signed-in browser. Same card shape as the forms above it, so
+     the security section reads as one thing rather than three. */
+  .account-sessions {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .account-sessions__row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-canvas-raised);
+  }
+
+  .account-sessions__copy {
+    display: grid;
+    min-width: 0;
+    gap: 0.1rem;
+  }
+
+  .account-sessions__copy > * {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .account-sessions__copy > span {
+    color: var(--color-text-muted);
+    font-size: 0.82rem;
+  }
+
+  .account-sessions__copy > small {
+    color: var(--color-text-subtle);
+    font-size: 0.72rem;
+  }
+
+  .account-sessions__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+    margin-top: var(--space-3);
+  }
+
+  .collection-builder {
+    border-top: 1px solid var(--color-border);
+    padding-top: var(--space-4);
+  }
+
+  .collection-builder > summary {
+    width: fit-content;
+    color: var(--color-accent);
+    cursor: pointer;
+    font-weight: 750;
+  }
+
+  .collection-create {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-4);
+    margin-top: var(--space-4);
+  }
+
+  .smart-rules {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: var(--space-3);
+    padding: var(--space-4);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-canvas-raised);
+  }
+
+  .smart-rules.hidden {
+    display: none;
+  }
+
+  .collection-create__footer {
+    display: flex;
+    grid-column: 1 / -1;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  .empty-state--compact {
+    min-height: 8rem;
+  }
+
+  .admin-metric {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-4);
+  }
+
+  .admin-metric > div {
+    display: grid;
+    gap: var(--space-1);
+  }
+
+  .admin-catalog__card {
+    display: grid;
+    gap: var(--space-2);
+    padding: var(--space-5);
+  }
+
+  .admin-catalog__header {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: var(--space-3);
+    margin-bottom: var(--space-2);
+  }
+
+  .admin-catalog__header > div {
+    min-width: 0;
+  }
+
+  .admin-catalog__header h3 {
+    overflow: hidden;
+    font-size: 1rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .admin-catalog__icon {
+    flex: 0 0 auto;
+    grid-row: auto;
+  }
+
+  .admin-section {
+    margin: 0;
+  }
+
+  .admin-create {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(12rem, 1fr));
+    align-items: end;
+    gap: var(--space-3);
+  }
+
+  /* Under the first field, where the eye is after filling the form in — not
+     centred under a row of left-aligned fields. */
+  .admin-create__actions {
+    display: flex;
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+
+  .admin-users {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-3);
+  }
+
+  .admin-user {
+    display: grid;
+    min-width: 0;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+    gap: var(--space-4);
+    padding: var(--space-4);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: var(--color-surface);
+    box-shadow: var(--shadow-card);
+  }
+
+  .admin-user__identity {
+    display: grid;
+    min-width: 0;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--space-3);
+    padding-right: 0;
+    padding-bottom: var(--space-3);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .admin-user__identity strong,
+  .admin-user__identity small {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .admin-user__identity small {
+    color: var(--color-text-muted);
+  }
+
+  .admin-user__controls {
+    display: grid;
+    grid-template-columns: minmax(11rem, 0.7fr) minmax(12rem, 0.75fr) minmax(24rem, 1.6fr);
+    align-items: end;
+    gap: var(--space-3);
+  }
+
+  .admin-user__toggles {
+    display: grid;
+    align-self: center;
+    gap: var(--space-3);
+  }
+
+  .admin-user__passwords {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-3);
+  }
+
+  .admin-user__footer {
+    display: flex;
+    min-width: 0;
+    min-height: 2.75rem;
+    grid-column: 1 / -1;
+    align-items: center;
+    align-self: stretch;
+    flex-direction: row;
+    justify-content: center;
+    gap: var(--space-2);
+  }
+
+  .admin-user__message {
+    min-width: 5rem;
+    color: var(--color-text-muted);
+    font-size: 0.78rem;
+  }
+
+  .admin-user__message.is-success {
+    color: var(--color-accent);
+  }
+
+  .admin-user__message.is-error {
+    color: var(--color-danger);
+  }
+
+  .toggle-field {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    white-space: nowrap;
+  }
+
+  .admin-settings__audio-profile {
+    grid-column: 1 / -1;
+  }
+
+  .admin-audio-profile-note {
+    max-width: 72rem;
+    margin: 0;
+    color: var(--color-text-muted);
+    font-size: 0.78rem;
+    line-height: 1.5;
+  }
+
+  .admin-catalog__actions {
+    display: flex;
+    min-height: 2.75rem;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-start;
+    gap: var(--space-3);
+    margin-top: var(--space-3);
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--color-border);
+  }
+
+  .admin-catalog__scan-status {
+    max-width: 12rem;
+    color: var(--color-text-muted);
+    font-size: 0.76rem;
+  }
+
+  .admin-subtitle-cache {
+    display: grid;
+    gap: var(--space-3);
+  }
+
+  .admin-subtitle-cache__fields {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-3);
+  }
+
+  .admin-subtitle-cache__progress {
+    width: 100%;
+    height: 0.65rem;
+    accent-color: var(--color-accent);
+  }
+
+  .admin-subtitle-cache__status,
+  .admin-subtitle-cache__hint {
+    margin: 0;
+    color: var(--color-text-muted);
+    font-size: 0.8rem;
+  }
+
+  .admin-subtitle-cache__actions {
+    display: flex;
+    justify-content: flex-start;
+  }
+
+  .toggle-field input {
+    width: 1.15rem;
+    height: 1.15rem;
+    flex: 0 0 auto;
+    accent-color: var(--color-accent);
+  }
+
+  .admin-catalog__details {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-2);
+    color: var(--color-text-muted);
+    font-size: 0.78rem;
+  }
+
+  .admin-catalog__details span {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .admin-catalog__details .icon {
+    width: 0.85rem;
+    height: 0.85rem;
+    color: var(--color-info);
+  }
+
+  .status-pill--success {
+    border-color: var(--color-accent-border);
+    background: var(--color-accent-soft);
+    color: var(--color-accent);
+  }
+
+  .status-pill--muted {
+    color: var(--color-text-subtle);
+  }
+
+  .status-pill--warning {
+    border-color: var(--color-warning-border);
+    background: var(--color-warning-soft);
+    color: var(--color-warning);
+  }
+
+  .status-pill--danger {
+    border-color: var(--color-danger);
+    background: var(--color-danger-soft);
+    color: var(--color-danger);
+  }
+
+  /* The step-up ladder's thresholds: one row per context, three number fields. */
+  .stepup-thresholds .input {
+    width: 100%;
+    min-width: 5.5rem;
+  }
+
+  .stepup-thresholds th[scope="row"] {
+    color: var(--color-text);
+    font-size: 0.9rem;
+    letter-spacing: normal;
+    text-transform: none;
+  }
+
+  /* Grid items do not shrink below their content, and a scroll container still
+     reports its content's width upwards; with no width of their own (and the
+     full width as a minimum) these tables scroll inside their wrapper instead
+     of widening the page on a phone. */
+  .stepup-settings,
+  .stepup-list {
+    min-width: 0;
+  }
+
+  .stepup-settings .table-wrap,
+  .stepup-list .table-wrap {
+    width: 0;
+    min-width: 100%;
+  }
+
+  /* A select is as wide as its longest option; capped, it may shrink with the column. */
+  .admin-settings select.input {
+    max-width: 100%;
+  }
+
+  /* The settings forms' toggles wrap on a phone: one long label ("Pozwól zwijać
+     odtwarzacz także na komputerze") used to push the security tab past the screen. */
+  .admin-settings .toggle-field {
+    min-width: 0;
+    white-space: normal;
+  }
+
+  .stepup-list {
+    display: grid;
+    gap: var(--space-3);
+    margin-top: var(--space-6);
+  }
+
+  .admin-user--pending {
+    border-color: var(--color-warning-border);
+  }
+
+  .admin-user__pending-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin-right: auto;
+  }
+
+  .table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+  }
+
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .data-table th,
+  .data-table td {
+    padding: var(--space-3);
+    border-bottom: 1px solid var(--color-border);
+    text-align: left;
+  }
+
+  .data-table tbody tr:hover {
+    background: var(--color-surface-hover);
+  }
+
+  .data-table th {
+    color: var(--color-text-muted);
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  @media (max-width: 80rem) {
+    .admin-create,
+    .smart-rules {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .admin-user {
+      grid-template-columns: 1fr;
+    }
+
+    .admin-user__identity {
+      padding-right: 0;
+      padding-bottom: var(--space-3);
+      border-right: 0;
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .admin-user__controls {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .admin-user__footer {
+      min-width: 0;
+      align-items: center;
+      flex-direction: row;
+      justify-content: center;
+    }
+  }
+
+  @media (max-width: 50rem) {
+    .admin-create,
+    .admin-subtitle-cache__fields,
+    .admin-user__controls,
+    .collection-create,
+    .smart-rules {
+      grid-template-columns: 1fr;
+    }
+
+    .admin-user__identity {
+      grid-template-columns: auto minmax(0, 1fr);
+    }
+
+    .admin-user__identity .status-pill {
+      grid-column: 2;
+      justify-self: start;
+    }
+  }
+
+  .collection-card__actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--space-1);
+    padding: 0 var(--space-2) var(--space-2);
+  }
+
+  .collection-card__actions .icon-button {
+    margin: 0;
+  }
+
+  .collection-card__actions .icon-button.is-active {
+    border-color: var(--color-accent);
+    background: var(--color-accent-soft);
+    color: var(--color-accent);
+  }
+
+  /* A group card carries far more than a user card (11 rights in three themed
+     sets plus four limits), so it drops the user card's three-column grid and
+     stacks full-width rows instead of squeezing everything into one column. */
+  .admin-group .admin-user__controls {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr);
+    align-items: start;
+    gap: var(--space-4);
+  }
+
+  .admin-group__flags,
+  .admin-group__limits {
+    grid-column: 1 / -1;
+  }
+
+  /* `min(100%, 15rem)`: a track may not be wider than the panel it is in. With a
+     bare 15rem — and labels that refused to wrap — the Groups section of the
+     panel was 438 px wide on a 390 px phone. */
+  .admin-group__flags {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+    gap: var(--space-3);
+  }
+
+  .admin-group__flag-set {
+    display: grid;
+    /* A fieldset is as wide as its longest word by default, whatever its column says. */
+    min-width: 0;
+    padding: var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    margin: 0;
+    background: rgb(var(--color-highlight-rgb) / 2%);
+    gap: var(--space-2);
+  }
+
+  .admin-group__flag-set legend {
+    padding: 0 var(--space-2);
+    color: var(--color-text-muted);
+    font-size: 0.78rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .admin-group__flag-set .toggle-field {
+    min-width: 0;
+    align-items: flex-start;
+    gap: var(--space-2);
+    line-height: 1.35;
+    white-space: normal;
+  }
+
+  .admin-group__flag-set .toggle-field span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .admin-group__limits {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+    gap: var(--space-3);
+    padding-top: var(--space-2);
+    border-top: 1px solid var(--color-border);
+  }
+
+  @media (max-width: 60rem) {
+    .admin-group .admin-user__controls {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  /* Removal needs its destination right next to it, so members are never
+     silently dropped to a fallback the operator did not choose. */
+  .admin-group__remove {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-right: auto;
+  }
+
+  .admin-group__remove .input {
+    min-width: 10rem;
+  }
+
+  .button--danger {
+    border: 1px solid var(--color-danger-border);
+    background: var(--color-danger-soft);
+    color: var(--color-on-danger-soft);
+  }
+
+  .button--danger:hover {
+    border-color: var(--color-danger-border-strong);
+  }
+
+  /* Uncertain genre matches.
+
+     Each row is a decision, so the shape puts the question at the top (what was
+     searched for, and why the matcher hesitated) and the answers underneath as
+     cards that can be taken with one button. The manual editor is folded away:
+     it is the rarer path, and an open multi-select on every row would bury the
+     candidates that usually hold the right answer. */
+  .admin-lookup__toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  .admin-lookup__toolbar .input {
+    max-width: 16rem;
+  }
+
+  /* .panel supplies the border and the background but no padding — sibling
+     panels get theirs from .account-panel / .admin-section. Without this the
+     card's text sat flush against its own border. */
+  .admin-lookup,
+  .admin-folder {
+    display: grid;
+    padding: var(--space-4);
+    gap: var(--space-3);
+  }
+
+  .admin-lookup__heading {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-2);
+  }
+
+  .admin-lookup__heading h3 {
+    margin: 0;
+  }
+
+  .admin-lookup__badge {
+    padding: 0.15rem 0.5rem;
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+    font-size: 0.8rem;
+    white-space: nowrap;
+  }
+
+  .admin-lookup__candidates {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .admin-lookup__candidate {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+  }
+
+  .admin-lookup__candidate-copy {
+    display: grid;
+    gap: 0.15rem;
+    min-width: 0;
+  }
+
+  .admin-lookup__link {
+    justify-self: start;
+    font-size: 0.8rem;
+  }
+
+  .admin-lookup__manual-body {
+    display: grid;
+    gap: var(--space-3);
+    padding-top: var(--space-3);
+  }
+
+  .admin-lookup__footer {
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  @media (max-width: 40rem) {
+    .admin-lookup__candidate {
+      /* The button drops under the title rather than squeezing it to nothing. */
+      flex-direction: column;
+      align-items: stretch;
+    }
+  }
+
+  /* Two download buttons side by side, wrapping on a phone. */
+  .account-panel__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  /* --- The theme switch ("Moje konto" → Ustawienia) ----------------------------
+     Two samples side by side, one under another where there is no room. Each
+     sample is a miniature of the interface drawn in that theme's own tokens —
+     its preview carries `data-theme`, and tokens.css answers to that attribute
+     on any element — so the choice is seen before it is made, and no colour is
+     written here. */
+  .theme-picker {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 12.5rem), 1fr));
+    gap: var(--space-3);
+  }
+
+  .theme-option {
+    position: relative;
+    display: grid;
+    min-width: 0;
+    align-content: start;
+    gap: var(--space-3);
+    padding: var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: var(--color-canvas-raised);
+    color: var(--color-text);
+    cursor: pointer;
+    text-align: left;
+    transition:
+      border-color var(--duration-fast) var(--ease-standard),
+      box-shadow var(--duration-normal) var(--ease-standard),
+      transform var(--duration-fast) var(--ease-standard);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .theme-option:hover {
+      border-color: var(--color-border-strong);
+      transform: translateY(-2px);
+    }
+  }
+
+  .theme-option:active {
+    transform: scale(0.985);
+  }
+
+  .theme-option[aria-checked="true"] {
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 1px var(--color-accent), var(--glow-ambient);
+  }
+
+  .theme-option__preview {
+    position: relative;
+    display: grid;
+    aspect-ratio: 16 / 9;
+    grid-template-columns: 24% minmax(0, 1fr);
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--ambient-light), var(--color-canvas);
+  }
+
+  .theme-option__line {
+    position: absolute;
+    z-index: 1;
+    inset: 0 0 auto;
+    height: 2px;
+    background: var(--gradient-signature);
+  }
+
+  .theme-option__side {
+    display: grid;
+    align-content: start;
+    gap: 0.4rem;
+    padding: 0.75rem 0.5rem;
+    border-right: 1px solid var(--color-border);
+    background: var(--color-canvas-raised);
+  }
+
+  .theme-option__side > span {
+    height: 0.3rem;
+    border-radius: 999px;
+    background: var(--color-border-strong);
+  }
+
+  .theme-option__side > span:first-child {
+    background: var(--color-accent);
+  }
+
+  .theme-option__main {
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) auto;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.4rem;
+    padding: 0.75rem 0.6rem 0.5rem;
+  }
+
+  .theme-option__card {
+    border: 1px solid var(--color-border);
+    border-radius: 0.3rem;
+    background: var(--color-surface);
+  }
+
+  .theme-option__dock {
+    display: flex;
+    align-items: center;
+    grid-column: 1 / -1;
+    gap: 0.4rem;
+    padding: 0.3rem 0.4rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.3rem;
+    background: var(--color-surface-strong);
+  }
+
+  .theme-option__play {
+    width: 0.75rem;
+    height: 0.75rem;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    background: var(--color-accent);
+  }
+
+  .theme-option__progress {
+    height: 0.2rem;
+    flex: 1 1 auto;
+    border-radius: 999px;
+    background: var(--gradient-progress);
+  }
+
+  .theme-option__copy {
+    display: grid;
+    min-width: 0;
+    gap: 0.15rem;
+    /* Room for the tick in the corner. */
+    padding-right: 2rem;
+  }
+
+  .theme-option__copy small {
+    color: var(--color-text-muted);
+    font-size: 0.8rem;
+    line-height: 1.35;
+  }
+
+  .theme-option__check {
+    position: absolute;
+    right: var(--space-3);
+    bottom: var(--space-3);
+    display: grid;
+    width: 1.5rem;
+    height: 1.5rem;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--color-accent);
+    color: var(--color-on-accent);
+    opacity: 0;
+    scale: 0.6;
+    transition:
+      opacity var(--duration-fast) var(--ease-standard),
+      scale var(--duration-normal) var(--ease-out);
+  }
+
+  .theme-option__check .icon {
+    width: 0.8rem;
+    height: 0.8rem;
+    font-size: 0.7rem;
+  }
+
+  .theme-option[aria-checked="true"] .theme-option__check {
+    opacity: 1;
+    scale: 1;
+  }
+
+  /* The upload row.
+
+     Three controls that each want the full width are three stacked bars, so
+     they get a grid instead: the file picker takes what is left, the library
+     select is only as wide as its longest word needs, and the button sits on
+     the same line as both. Under 46rem there is no room for that, and the row
+     becomes a stack — which is the right shape on a phone anyway. */
+  .import-form {
+    display: grid;
+    grid-template-columns: minmax(9rem, 16rem) auto;
+    align-items: end;
+    gap: var(--space-3);
+    margin-top: var(--space-3);
+  }
+
+  /* The drop zone is the panel's own control, not a field in a row. */
+  .import-form__drop {
+    min-height: 6rem;
+  }
+
+  .import-form .field {
+    /* The label sits above its control, and the control fills the cell. */
+    min-width: 0;
+    margin: 0;
+  }
+
+  .import-form > .button {
+    /* Line the button up with the inputs beside it, not with their labels. */
+    min-height: 3rem;
+    white-space: nowrap;
+  }
+
+  /* A native file input is the one control the browser draws itself, and left
+     alone it arrives with a grey system button and a "no file selected" in
+     whatever font the OS felt like. This makes its two halves match everything
+     around them. */
+  .import-form input[type="file"] {
+    display: flex;
+    align-items: center;
+    padding-inline: var(--space-2);
+    font-size: 0.9rem;
+    cursor: pointer;
+  }
+
+  .import-form input[type="file"]::file-selector-button {
+    margin-right: var(--space-3);
+    padding: 0.45rem var(--space-3);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-sm, 0.4rem);
+    background: var(--color-surface-strong);
+    color: var(--color-text);
+    font: inherit;
+    cursor: pointer;
+    transition: border-color var(--duration-fast) var(--ease-standard);
+  }
+
+  .import-form input[type="file"]::file-selector-button:hover {
+    border-color: var(--color-accent);
+  }
+
+  @media (max-width: 46rem) {
+    .import-form {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .import-form > .button {
+      justify-content: center;
+    }
+  }
+
+  /* Review cards.
+
+     The first version was a stack of same-weight paragraphs, so nothing said
+     which line was the question and which was the answer. Now the title leads,
+     the path under it is quiet but findable, the "why it hesitated" line reads
+     as an aside, and the candidates sit inside a panel of their own. */
+  .admin-lookup__title {
+    display: grid;
+    gap: 0.15rem;
+    min-width: 0;
+  }
+
+  .admin-lookup__title h3 {
+    margin: 0;
+    font-size: 1.05rem;
+  }
+
+  /* Where the file actually is. Wraps rather than truncating: a path that ends
+     in an ellipsis is the half nobody needs. */
+  .admin-lookup__path {
+    color: var(--color-text-subtle);
+    font-size: 0.8rem;
+    overflow-wrap: anywhere;
+  }
+
+  .admin-lookup__reasons {
+    padding-left: var(--space-3);
+    border-left: 2px solid var(--color-border);
+    margin: 0;
+    color: var(--color-text-muted);
+    font-size: 0.85rem;
+  }
+
+  .admin-lookup__candidates {
+    padding: var(--space-2);
+    border-radius: var(--radius-md);
+    background: var(--color-canvas-raised);
+  }
+
+  .admin-lookup__candidate {
+    background: var(--color-surface);
+  }
+
+  .admin-lookup__candidate strong {
+    font-size: 0.98rem;
+  }
+
+  /* Folder view: one decision for everything inside. The controls sit in a row
+     because they are one action together — pick genres, optionally a year, then
+     apply — and the multi-select is the tall one, so the row is bottom-aligned. */
+  .admin-folder__form {
+    display: grid;
+    /* The genre list is the control that needs room; a four-digit year does not,
+       and a wide box for four digits reads as though more is expected. */
+    grid-template-columns: minmax(0, 1fr) minmax(7rem, 10rem) auto;
+    align-items: end;
+    gap: var(--space-3);
+  }
+
+  .admin-folder__form .field {
+    min-width: 0;
+    margin: 0;
+  }
+
+  .admin-folder__form .button {
+    min-height: 3rem;
+    white-space: nowrap;
+  }
+
+  @media (max-width: 52rem) {
+    .admin-folder__form {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .admin-folder__form .button {
+      justify-content: center;
+    }
+  }
+
+  /* Per-episode years. A list of rows, each a title and one small box, because
+     the only thing that varies here is four digits — everything else about the
+     folder was already decided above. */
+  .admin-folder__footer {
+    display: flex;
+    justify-content: flex-start;
+  }
+
+  .admin-folder__works {
+    display: grid;
+    max-height: 26rem;
+    padding: var(--space-2);
+    border-radius: var(--radius-md);
+    background: var(--color-canvas-raised);
+    gap: var(--space-1);
+    overflow-y: auto;
+  }
+
+  .admin-folder__work {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+  }
+
+  .admin-folder__work-copy {
+    display: grid;
+    gap: 0.1rem;
+    min-width: 0;
+  }
+
+  .admin-folder__work .input {
+    width: 6rem;
+    flex: none;
+  }
+
+  /* Placed last on purpose: the base `.account-stat` and icon rules above have
+     the same specificity, so this phone layout only wins by coming after them. */
+  /* On a phone a statistic is a number and a word, not a card a full row wide:
+     four of them used to cost a whole screen. */
+  @media (max-width: 34rem) {
+    .account-stats,
+    .admin-metrics--quad {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: var(--space-3);
+    }
+
+    /* Icon and number on the first line, the word under them at full width.
+       Beside the icon a half-width card had 89 px for the word, and
+       "administratorów" or "oczekujących" ended in an ellipsis that hid what
+       the number counted. The metric's inner wrapper steps aside
+       (`display: contents`) so its two children join this grid. */
+    .account-stat,
+    .admin-metric {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      grid-template-areas:
+        "icon value"
+        "label label";
+      align-items: center;
+      gap: var(--space-2) var(--space-3);
+      padding: var(--space-3);
+    }
+
+    .admin-metric > div {
+      display: contents;
+    }
+
+    .account-stat > .icon,
+    .admin-metric__icon {
+      width: 2.25rem;
+      height: 2.25rem;
+      grid-area: icon;
+      border-radius: var(--radius-sm);
+    }
+
+    .account-stat > strong,
+    .admin-metric > div > strong {
+      grid-area: value;
+    }
+
+    .account-stat > span:not(.icon),
+    .admin-metric > div > span {
+      min-width: 0;
+      grid-area: label;
+      font-size: 0.85rem;
+      overflow-wrap: anywhere;
+    }
+  }
+}

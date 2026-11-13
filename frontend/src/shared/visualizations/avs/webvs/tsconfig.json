@@ -1,0 +1,8 @@
+{
+  "//": "webvs was written for TypeScript's old class-field semantics: fields declared only for their type (even `[\"constructor\"]`) must not be initialised to undefined. This folder alone keeps them.",
+  "extends": "../../../../../tsconfig.json",
+  "compilerOptions": {
+    "useDefineForClassFields": false
+  },
+  "include": ["./**/*.ts"]
+}

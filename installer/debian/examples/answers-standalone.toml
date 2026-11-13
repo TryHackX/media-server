@@ -1,0 +1,42 @@
+# Plik odpowiedzi: wersja S — samodzielny serwer publiczny (ten komputer ma
+# publiczny adres i własną domenę).
+#
+#   sudo bash zainstaluj-debian.sh --answers installer/debian/examples/answers-standalone.toml
+#        bash zainstaluj-debian.sh --dry-run --answers installer/debian/examples/answers-standalone.toml
+#
+# Hasła administratora w tym pliku się nie podaje: admin.password_file (plik z chmod 600,
+# hasło w pierwszej linii) albo zmienna środowiskowa TRYHACKX_ADMIN_PASSWORD - wtedy
+# sudo --preserve-env=TRYHACKX_ADMIN_PASSWORD bash zainstaluj-debian.sh ... (sudo czyści środowisko).
+
+flow = "install"
+language = "pl"
+
+[access]
+mode = "direct"                       # S
+host_name = "media.example.org"       # rekord DNS tej nazwy ma wskazywać na ten serwer
+certificate = "letsencrypt"           # letsencrypt | selfsigned (tymczasowy) | files (własne pliki)
+acme_email = "admin@example.org"
+acme_agree_tos = true                 # akceptacja regulaminu Let's Encrypt (https://letsencrypt.org/repository/)
+# certificate = "files"
+# certificate_file = "/etc/ssl/media/fullchain.pem"
+# key_file = "/etc/ssl/media/privkey.pem"
+
+[[folders]]
+path = "/srv/media/muzyka"
+kind = "music"
+
+[[folders]]
+path = "/srv/media/filmy"
+kind = "movies"
+
+[admin]
+username = "jan"
+email = "jan@example.org"
+
+[firewall]
+manage = true                         # ufw: SSH, 80 i 443 otwarte, reszta zamknięta
+# extra_ports = ["8080/tcp"]          # inne usługi tego serwera, które mają zostać osiągalne
+
+[options]
+fail2ban = true                       # ban w zaporze po serii nieudanych logowań
+start_scan = true

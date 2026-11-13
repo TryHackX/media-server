@@ -1,0 +1,8 @@
+{
+  "//": "voltviz is written for TypeScript's old class-field semantics (its own tsconfig sets useDefineForClassFields: false); the build compiles this folder the way upstream does. Type checking still runs from the frontend's tsconfig.",
+  "extends": "../../../../tsconfig.json",
+  "compilerOptions": {
+    "useDefineForClassFields": false
+  },
+  "include": ["./**/*.ts"]
+}

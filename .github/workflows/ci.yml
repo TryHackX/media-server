@@ -1,0 +1,143 @@
+# Continuous integration — the same gate as `python scripts/check.py`, split into
+# jobs so a failure points at one layer. Nothing here deploys or touches secrets.
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    # Weekly dependency audit even when nothing changed.
+    - cron: "17 5 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (${{ matrix.os }}, Python ${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # 3.11 is the declared floor, 3.13 is what Debian 13 ships.
+        os: [ubuntu-latest, windows-latest]
+        python: ["3.11", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      # The PHP bridge tests run the real interpreter (skipped when php is missing,
+      # so we install it explicitly and run the gate in --strict mode).
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: mbstring, openssl, pdo_mysql, curl
+          coverage: none
+
+      - name: Install hash-verified dependencies from the universal lock
+        run: |
+          python -m pip install --disable-pip-version-check --require-hashes -r requirements-dev.lock
+          python -m pip install --disable-pip-version-check --no-deps --no-build-isolation -e .
+
+      - name: Lint, tests, PHP syntax, dependency consistency, secret scan
+        run: python scripts/check.py --strict --only ruff,pytest,pip-check,php-lint,secrets
+
+  frontend:
+    name: Frontend (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ["22", "24"]
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Reproducible install from package-lock.json
+        run: npm ci --no-audit --no-fund
+
+      - name: Type-check and production build
+        run: npm run build
+
+      - name: Unit tests
+        run: npm run test:ui
+
+  installer:
+    name: Installer dry run (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      # Exercises the real installer against an empty media root without touching
+      # Apache, systemd or a database; --dry-run prints every step and writes nothing.
+      - name: Dry-run install
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/media/music"
+          MEDIA_SERVER_DB_PASSWORD=ci-only python scripts/install.py --dev --non-interactive --dry-run \
+            --config "$RUNNER_TEMP/config.local.toml" --music-root "$RUNNER_TEMP/media/music"
+
+  audit:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Python advisories (hash-verified lock)
+        run: |
+          python -m pip install --disable-pip-version-check pip-audit
+          pip-audit --require-hashes --progress-spinner off -r requirements-dev.lock
+
+      - name: npm advisories
+        working-directory: frontend
+        run: |
+          npm ci --no-audit --no-fund
+          npm audit --audit-level=low
+
+  secrets:
+    name: Secret scan (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Free for personal repositories; an organisation needs GITLEAKS_LICENSE.
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}

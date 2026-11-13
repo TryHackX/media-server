@@ -1,0 +1,69 @@
+# Request and connection limits for the TryHackX Media virtual host (Apache 2.4).
+#
+# Example only — include it from the virtual host (or put the lines there) by
+# hand, run `apache2ctl configtest`, then reload. Nothing in this repository
+# installs it. Debian: `sudo a2enmod reqtimeout` (enabled by default).
+#
+# These limits are about the shape of a request, not about who sends it: the
+# per-account and per-client pacing lives in the bridge (StepUpGuard) and the
+# per-address bans in fail2ban (deploy/fail2ban/). None of them may cut a long
+# film stream — that is a response being sent, which RequestReadTimeout does
+# not touch, and Timeout only counts silence between packets.
+
+# Slow clients that trickle a request in (slowloris): the headers within 20 s,
+# extended up to 40 s while at least 500 bytes a second arrive; the body the same.
+<IfModule reqtimeout_module>
+    RequestReadTimeout handshake=5 header=20-40,MinRate=500 body=20,MinRate=500
+</IfModule>
+
+# Nothing the application sends needs more than this; Apache's defaults are larger.
+LimitRequestLine 8190
+LimitRequestFields 60
+LimitRequestFieldSize 8190
+
+# Idle connections are cheap for the event MPM but not free; a short keep-alive
+# frees a worker sooner after the last request of a page.
+KeepAlive On
+KeepAliveTimeout 5
+MaxKeepAliveRequests 200
+
+# The bridge reads JSON bodies of at most 3 MB (a playlist import, base64);
+# anything larger is refused before PHP starts. The transfer service takes no
+# request bodies beyond an archive form (a token of up to 64 KiB).
+<Location "/media-next-api">
+    LimitRequestBody 3500000
+</Location>
+<Location "/media-transfer/">
+    LimitRequestBody 131072
+</Location>
+
+# Connection ceilings come from the MPM. The numbers suit a small home server;
+# raise them only with the memory to back them (each PHP request holds a worker).
+<IfModule mpm_event_module>
+    StartServers             2
+    ServerLimit              8
+    ThreadsPerChild         25
+    MaxRequestWorkers      200
+    MaxConnectionsPerChild   0
+</IfModule>
+
+# What the server says about itself. By default every answer carries something
+# like "Server: Apache/2.4.65 (Win64) OpenSSL/3.5.1 PHP/8.4.15", which tells a
+# stranger which advisories to read first; "Server: Apache" tells him nothing.
+# Both directives are server-wide and are refused inside a virtual host, so they
+# are shown here and set in the main configuration (Debian:
+# /etc/apache2/conf-available/security.conf already holds both lines; WAMP:
+# httpd.conf):
+#
+#   ServerTokens Prod
+#   ServerSignature Off
+#
+# PHP adds "X-Powered-By: PHP/8.x" on its own; `expose_php = Off` in php.ini
+# turns it off for everything PHP serves. The bridge removes it from its own
+# answers either way.
+
+# Apache has no per-address connection limit of its own. If this host faces the
+# internet directly (no proxy in front), the firewall can cap concurrent
+# connections per address — see docs/INSTALL-DEBIAN.md for an nftables example.
+# Behind a proxy every connection comes from the proxy, so such a cap belongs on
+# the proxy, never here.

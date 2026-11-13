@@ -1,0 +1,54 @@
+# Plik odpowiedzi: wersja P — prywatny serwer domowy za publicznym VPS-em.
+#
+#   sudo bash zainstaluj-debian.sh --answers installer/debian/examples/answers-private-vps.toml
+#        bash zainstaluj-debian.sh --dry-run --answers installer/debian/examples/answers-private-vps.toml
+#
+# Hasła administratora w tym pliku się nie podaje: admin.password_file (plik z chmod 600,
+# hasło w pierwszej linii) albo zmienna środowiskowa TRYHACKX_ADMIN_PASSWORD - wtedy
+# sudo --preserve-env=TRYHACKX_ADMIN_PASSWORD bash zainstaluj-debian.sh ... (sudo czyści środowisko).
+#
+# Adresy niżej są przykładowe (zakresy dokumentacyjne) — wpisz własne.
+# Nieznany klucz jest błędem, a nie szumem: literówka nie przejdzie po cichu.
+
+flow = "install"
+language = "pl"
+
+[access]
+mode = "vps"                          # P; pozostałe: "direct" (S), "lan" (D), "local" (C)
+host_name = "media.example.org"       # domena — jej rekord DNS ma wskazywać na VPS, nie na dom
+vps_addresses = ["203.0.113.10"]      # publiczny adres VPS-a (liczbowo); IPv6 można dopisać obok
+home_address = "198.51.100.7"         # publiczny adres łącza domowego albo nazwa z dynamicznego DNS
+allow_lan = false                     # true: sieć domowa może też wejść wprost na https://adres-w-sieci/
+acme_email = "admin@example.org"      # dla Let's Encrypt na VPS-ie; może być pusty
+acme_agree_tos = true                 # akceptacja regulaminu Let's Encrypt (https://letsencrypt.org/repository/)
+# disable_existing_https = false      # true: inna strona na porcie 443 tego Apache'a zostanie wyłączona (inaczej: odmowa)
+# regenerate_certificate = false      # true: nowy certyfikat domu - VPS pokaże stronę przerwy, dopóki nie dostanie nowej paczki
+#                                     #       (wymiana bez przerwy to --odnow)
+
+[[folders]]
+path = "/srv/media/muzyka"            # nie w /home ani /root — usługa tych katalogów nie widzi
+kind = "music"                        # music | movies | mixed
+
+[[folders]]
+path = "/srv/media/filmy"
+kind = "movies"
+
+[admin]
+username = "jan"
+email = "jan@example.org"
+# password_file = "/root/haslo-administratora"
+
+[firewall]
+manage = true                         # false: instalator nie rusza zapory
+trust_lan = true                      # włączając zaporę, zostaw sieć domową taką, jaka była (SMB, SSH…)
+# lan_subnets = ["192.168.1.0/24"]    # domyślnie: sieć, w której stoi ten komputer
+
+[vps]
+run = "manual"                        # "ssh": wyślij vps-setup.sh i uruchom (bez pytań — tylko z kluczem)
+# ssh_user = "root"
+# ssh_port = 22
+# ssh_identity_file = "/root/.ssh/id_ed25519"
+# ssh_host_fingerprint = "SHA256:…"   # wymagany przy pierwszym połączeniu bez pytań
+
+[options]
+start_scan = true                     # pierwsze indeksowanie rusza w tle, instalator na nie nie czeka

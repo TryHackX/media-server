@@ -1,0 +1,133 @@
+# VPS przed serwerem domowym — instrukcja dla {{DOMAIN}}
+
+Wygenerowane przez kreator TryHackX Media Server ({{GENERATED}}).
+**Ten folder zawiera Twoje prawdziwe adresy — nie publikuj go.**
+
+Efekt końcowy: goście wchodzą na `https://{{DOMAIN}}/`, widzą wyłącznie adres VPS
+(`{{VPS_PRIMARY}}`), a VPS po cichu rozmawia z Twoim komputerem w domu. Adres domowy nie
+pojawia się w DNS, w certyfikacie ani w żadnej odpowiedzi serwera.
+
+Czego ten układ **nie** ukryje — warto wiedzieć z góry:
+
+- **Poczta.** List wysłany z domu (aktywacja konta, przegląd nowości) niesie adres domowy w nagłówku
+  `Received:` serwera pocztowego, przez który wychodzi.
+- **Dynamiczny DNS.** Nazwa w rodzaju `dom.ddns.example` jest sama publicznym wpisem z adresem domowym —
+  nie łącz jej nigdzie z tą stroną.
+- **Historia DNS.** Domena, która kiedyś wskazywała wprost na dom, zostaje z nim powiązana w archiwach DNS;
+  nowa nazwa (albo nowy adres domowy) zaczyna od czysta.
+- **Sprawdzenie z zewnątrz.** Po wszystkim otwórz `https://{{HOME_ADDRESS}}/` z innej sieci (np. z telefonu
+  bez Wi-Fi): połączenie ma się nie udać. Jeśli się udaje, zapora w domu przepuszcza nie tylko VPS.
+
+## Co jest w folderze
+
+| Plik | Dokąd trafia na VPS |
+|---|---|
+| `{{SITE}}.conf` | `/etc/apache2/sites-available/{{SITE}}.conf` — port 80: Let's Encrypt i przekierowanie na HTTPS |
+| `{{SITE}}-ssl.conf` | `/etc/apache2/sites-available/{{SITE}}-ssl.conf` — port 443: proxy do domu |
+| `origin.crt` | `/etc/apache2/tryhackx-media/origin.crt` — certyfikat serwera domowego, jedyny, któremu VPS ufa |
+| `maintenance.html` | `/var/www/tryhackx-media/maintenance.html` — strona pokazywana, gdy dom nie odpowiada |{{EXTRA_ROWS_PL}}
+
+`origin.crt` to **certyfikat, nie klucz** — można go kopiować bez obaw. Klucz prywatny został
+w domu ({{KEY_LOCATION_PL}}) i nigdy nie powinien go opuścić.
+
+## Krok 1 — DNS
+
+U dostawcy domeny utwórz rekord wskazujący na **VPS** (nie na dom):
+
+| Typ | Nazwa | Wartość |
+|---|---|---|
+{{DNS_RECORDS}}
+
+Sprawdzenie (po kilku minutach): `nslookup {{DOMAIN}}` ma zwrócić adres VPS.
+
+## Krok 2 — router w domu
+
+Ustaw **przekierowanie portu**: TCP **443** z zewnątrz → `{{LAN_IP}}`, port **443**
+(to adres tego komputera w sieci domowej). Portu 80 nie przekierowuj — nie jest potrzebny,
+nawet jeśli dostawca go blokuje. Warto też w routerze przypisać komputerowi stały adres
+(„rezerwacja DHCP”), żeby `{{LAN_IP}}` się nie zmienił.
+
+{{HOME_FIREWALL_PL}}
+
+## Krok 3 — skopiuj folder na VPS
+
+{{COPY_STEP_PL}}
+
+## Krok 4 — polecenia na VPS (Debian/Ubuntu, jako root)
+
+{{STEP4_INTRO_PL}}```bash
+apt update
+apt install -y apache2 certbot
+a2enmod proxy proxy_http ssl headers
+
+mkdir -p /var/www/tryhackx-media/.well-known/acme-challenge /etc/apache2/tryhackx-media
+cd /root/tryhackx-bundle
+install -m 644 maintenance.html   /var/www/tryhackx-media/maintenance.html
+install -m 644 origin.crt         /etc/apache2/tryhackx-media/origin.crt
+install -m 644 {{SITE}}.conf      /etc/apache2/sites-available/{{SITE}}.conf
+install -m 644 {{SITE}}-ssl.conf  /etc/apache2/sites-available/{{SITE}}-ssl.conf
+
+# Czy certyfikat dotarł nienaruszony? Odcisk ma być identyczny z podanym niżej.
+openssl x509 -in /etc/apache2/tryhackx-media/origin.crt -noout -fingerprint -sha256
+```
+
+Oczekiwany odcisk SHA-256: `{{CERT_SHA256}}`
+
+Najpierw sam port 80 i certyfikat Let's Encrypt:
+
+```bash
+a2ensite {{SITE}}
+apache2ctl configtest && systemctl reload apache2
+
+certbot certonly --webroot -w /var/www/tryhackx-media -d {{DOMAIN}} \
+    --deploy-hook "systemctl reload apache2"
+```
+
+Dopiero gdy certbot napisze „Successfully received certificate”, włącz HTTPS:
+
+```bash
+a2ensite {{SITE}}-ssl
+apache2ctl configtest && systemctl reload apache2
+```
+
+Jeśli na VPS działa zapora (`ufw status` mówi „active”): `ufw allow 80,443/tcp`.
+
+Certyfikat Let's Encrypt odnawia się sam (zegar `certbot.timer`), a `--deploy-hook`
+przeładowuje Apache po każdym odnowieniu.
+
+## Krok 5 — sprawdź
+
+1. `https://{{DOMAIN}}/` pokazuje stronę logowania i **pozwala się zalogować**.
+2. `http://{{DOMAIN}}/` przekierowuje na HTTPS.
+3. Utwór gra, plik się pobiera.
+4. `https://{{DOMAIN}}/media-transfer/health/ready` odpowiada **403** (nie `ready`).
+5. Zatrzymaj na chwilę Apache w domu ({{STOP_HOME_PL}}): strona pokazuje
+   „Serwer jest chwilowo niedostępny”. Uruchom ponownie — po chwili wraca.
+
+## Gdy coś nie działa
+
+| Objaw | Najczęstsza przyczyna |
+|---|---|
+| Strona „chwilowo niedostępny” od początku | Router nie przekierowuje portu 443 na `{{LAN_IP}}`; komputer ma inny adres w sieci; Apache w domu nie działa; adres domowy się zmienił (patrz niżej) |
+| W `/var/log/apache2/{{SITE}}-error.log`: `certificate verify failed` | Na VPS leży inny `origin.crt` niż ten z tej paczki — skopiuj go ponownie ({{NEW_BUNDLE_HINT_PL}}) |
+| `apache2ctl configtest`: `SSLCertificateFile: file ... does not exist` | Włączono `{{SITE}}-ssl` przed uzyskaniem certyfikatu — `a2dissite {{SITE}}-ssl`, certbot, potem znowu `a2ensite` |
+| Logowanie odbija, limit prób dotyka wszystkich naraz | VPS łączy się z domem z innego adresu niż wpisany w kreatorze — {{FIX_VPS_ADDRESS_PL}} |
+| Film przerywa się po minucie | Linia `ProxyPass /media-transfer/` musi stać **nad** `ProxyPass /` i mieć `timeout=3600` |
+
+## Gdy coś się zmienia
+
+- **Zmienił się adres domowy** ({{HOME_ADDRESS}}): {{HOME_NOTE_PL}}
+- **Zmienił się adres VPS**: {{VPS_CHANGED_PL}}
+- **Certyfikat serwera domowego** jest ważny do **{{CERT_NOT_AFTER}}**. {{CERT_RENEW_PL}}
+
+## Dlaczego tak, a nie prościej
+
+- **Przypięty certyfikat zamiast `SSLProxyVerify none`.** Bez sprawdzania ktokolwiek, kto wepnie
+  się między VPS a dom, czyta hasła i ciasteczka wszystkich gości. Tutaj VPS akceptuje jeden,
+  konkretny certyfikat; kopiowanie certyfikatów Let's Encrypt z VPS do domu przestaje być potrzebne.
+- **Port 443 w domu tylko dla VPS.** Skanery internetu zaglądają pod każdy adres. Gdyby dom
+  odpowiadał wszystkim, a certyfikat nosił nazwę domeny, „ukryty” adres byłby publiczny w ciągu dni.
+  Dlatego zapora wpuszcza tylko VPS, a certyfikat domowy nie zawiera nazwy `{{DOMAIN}}`.
+- **Nagłówki `X-Forwarded-*` ustawiane, nie dopisywane.** Serwer domowy wierzy im tylko od
+  adresu VPS — a VPS kasuje to, co pod tymi nazwami przysłał gość.
+- **Osobny, długi limit czasu dla `/media-transfer/`.** Film i ZIP to jedno długie żądanie.

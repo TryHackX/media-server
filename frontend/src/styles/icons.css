@@ -1,0 +1,128 @@
+/* Font Awesome Free 7.3.0 — only the glyphs this application draws.
+   Icons: CC BY 4.0 · Font: SIL OFL 1.1 · Code: MIT (https://fontawesome.com/license/free).
+
+   The full `fontawesome.min.css` defines about two thousand icons in 71.6 kB of
+   render-blocking CSS; the interface uses the ones listed below, all named in
+   shared/icons.ts. Adding an icon there means adding its line here —
+   shared/icons.test.ts compares the two, and checks every code point against
+   the installed Font Awesome, so a missing or stale line fails the build.
+
+   Deliberately outside any cascade layer, exactly like the stylesheet it
+   replaces: unlayered rules beat layered ones, and the glyph box below (1.25em
+   wide) is what every icon in the interface has been laid out against.
+
+   The family and the weight are variables. Font Awesome Free solid is what they
+   fall back to; an installed Font Awesome Pro (frontend/vendor, see
+   scripts/icon-packs.mjs) sets them from `[data-icon-style]` — on <html> for
+   the whole interface, or on one element for the preview in the admin panel.
+   The code points are the same in both packages, so nothing below changes. */
+
+.icon__glyph {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  position: relative;
+  display: var(--fa-display, inline-block);
+  font-family: var(--icon-family, "Font Awesome 7 Free");
+  font-feature-settings: normal;
+  font-style: normal;
+  font-synthesis: none;
+  font-variant: normal;
+  font-weight: var(--icon-weight, 900);
+  letter-spacing: normal;
+  line-height: 1;
+  text-align: center;
+  text-rendering: auto;
+  width: var(--fa-width, 1.25em);
+}
+
+.icon__glyph::before {
+  content: var(--fa);
+}
+
+/* Duotone families draw a second, faded layer of the same code point (the
+   font's stylistic set ss01). Every other family leaves it switched off. */
+.icon__glyph::after {
+  display: var(--icon-duotone, none);
+  position: absolute;
+  inset: 0;
+  content: var(--fa);
+  color: var(--fa-secondary-color, currentColor);
+  font-feature-settings: "ss01";
+  opacity: var(--fa-secondary-opacity, 0.4);
+}
+
+/* Free, by name: the admin panel's preview shows it inside a page drawn in a
+   Pro style, so the variables have to be reset, not just left unset. */
+[data-icon-style="free"] {
+  --icon-family: "Font Awesome 7 Free";
+  --icon-weight: 900;
+  --icon-duotone: none;
+}
+
+/* A mark that means "yes" stays filled in every style: a favourite heart, the
+   star next to a rating. In a light or thin family an outline heart would read
+   as "not a favourite" — the opposite of what it says. */
+.is-active > .icon--heart .icon__glyph,
+.queue-item__favorite .icon__glyph,
+.queue-item__rating .icon__glyph {
+  --icon-weight: 900;
+}
+
+.fa-arrow-right { --fa: "\f061"; }
+.fa-backward-step { --fa: "\f048"; }
+.fa-bars { --fa: "\f0c9"; }
+.fa-chart-simple { --fa: "\e473"; }
+.fa-check { --fa: "\f00c"; }
+.fa-chevron-left { --fa: "\f053"; }
+.fa-chevron-right { --fa: "\f054"; }
+.fa-circle-info { --fa: "\f05a"; }
+.fa-clock-rotate-left { --fa: "\f1da"; }
+.fa-compress { --fa: "\f066"; }
+.fa-database { --fa: "\f1c0"; }
+.fa-dice { --fa: "\f522"; }
+.fa-download { --fa: "\f019"; }
+.fa-ellipsis { --fa: "\f141"; }
+.fa-expand { --fa: "\f065"; }
+.fa-eye { --fa: "\f06e"; }
+.fa-file { --fa: "\f15b"; }
+.fa-file-zipper { --fa: "\f1c6"; }
+.fa-film { --fa: "\f008"; }
+.fa-floppy-disk { --fa: "\f0c7"; }
+.fa-folder { --fa: "\f07b"; }
+.fa-forward-step { --fa: "\f051"; }
+.fa-gear { --fa: "\f013"; }
+.fa-grip-vertical { --fa: "\f58e"; }
+.fa-heart { --fa: "\f004"; }
+.fa-house { --fa: "\f015"; }
+.fa-icons { --fa: "\f86d"; }
+.fa-image { --fa: "\f03e"; }
+.fa-link { --fa: "\f0c1"; }
+.fa-list-ol { --fa: "\f0cb"; }
+.fa-lock { --fa: "\f023"; }
+.fa-magnet { --fa: "\f076"; }
+.fa-magnifying-glass { --fa: "\f002"; }
+.fa-music { --fa: "\f001"; }
+.fa-pause { --fa: "\f04c"; }
+.fa-pen { --fa: "\f304"; }
+.fa-play { --fa: "\f04b"; }
+.fa-repeat { --fa: "\f363"; }
+.fa-right-from-bracket { --fa: "\f2f5"; }
+.fa-rotate { --fa: "\f2f1"; }
+.fa-rotate-left { --fa: "\f2ea"; }
+.fa-rotate-right { --fa: "\f2f9"; }
+.fa-server { --fa: "\f233"; }
+.fa-share-nodes { --fa: "\f1e0"; }
+.fa-shuffle { --fa: "\f074"; }
+.fa-sliders { --fa: "\f1de"; }
+.fa-star { --fa: "\f005"; }
+.fa-tags { --fa: "\f02c"; }
+.fa-trash-can { --fa: "\f2ed"; }
+.fa-upload { --fa: "\f093"; }
+.fa-user { --fa: "\f007"; }
+.fa-user-shield { --fa: "\f505"; }
+.fa-users { --fa: "\f0c0"; }
+.fa-volume-high { --fa: "\f028"; }
+.fa-volume-xmark { --fa: "\f6a9"; }
+.fa-wand-magic-sparkles { --fa: "\e2ca"; }
+.fa-wave-square { --fa: "\f83e"; }
+.fa-xmark { --fa: "\f00d"; }

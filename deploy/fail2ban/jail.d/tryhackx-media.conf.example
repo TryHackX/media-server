@@ -1,0 +1,33 @@
+# fail2ban jail for the TryHackX Media sign-in (filter: tryhackx-media-auth).
+#
+# Copy to /etc/fail2ban/jail.d/tryhackx-media.conf (without .example) after the
+# filter, then `sudo systemctl reload fail2ban`. The Debian installer
+# (zainstaluj-debian.sh) installs it for a standalone public server (S); by hand,
+# copy it as above.
+#
+# The application already refuses a client after 10 failed sign-ins in 15
+# minutes and blocks it after repeated refusals (StepUpGuard); this jail moves
+# the same decision down to the firewall, so a script stops costing PHP work.
+#
+# Behind a reverse proxy (a VPS, Cloudflare) read docs/INSTALL-DEBIAN.md
+# "Cloudflare, fail2ban i limity połączeń" first: the address in the log must be
+# the visitor's (mod_remoteip), and a firewall on this machine cannot stop a
+# visitor whose packets arrive from the proxy — ban at the proxy instead, and
+# never ban the proxy itself (ignoreip).
+
+[tryhackx-media-auth]
+enabled  = true
+filter   = tryhackx-media-auth
+port     = http,https
+# The ErrorLog of the media virtual host (deploy/apache/media-vhost.conf.example).
+logpath  = /var/log/apache2/tryhackx-media-error.log
+backend  = polling
+maxretry = 10
+findtime = 15m
+bantime  = 1h
+# Repeat offenders stay out longer each time.
+bantime.increment = true
+bantime.maxtime = 1w
+# Your own networks and any proxy in front of this host; addresses go here, not
+# in the repository's tracked files.
+# ignoreip = 127.0.0.1/8 ::1

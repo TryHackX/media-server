@@ -1,0 +1,18 @@
+{
+  "flow": "install",
+  "target": "C:/TryHackX/MediaServer",
+  "database": { "engine": "mysql", "name": "media_server", "user": "media_server", "admin_user": "root" },
+  "folders": [
+    { "path": "E:/Muzyka", "kind": "music" },
+    { "path": "E:/Filmy", "kind": "movies" }
+  ],
+  "access": {
+    "mode": "vps",
+    "host_name": "media.example.org",
+    "vps_addresses": ["203.0.113.10"],
+    "home_address": "198.51.100.7",
+    "allow_lan": false
+  },
+  "admin": { "username": "jan", "email": "jan@example.org" },
+  "options": { "autostart_services": true, "start_scan": true, "disable_generic_rules": true }
+}

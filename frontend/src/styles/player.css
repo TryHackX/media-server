@@ -1,0 +1,1989 @@
+@layer pages {
+  /* The player's three surfaces: the dock (shared/player/dock.ts), the queue
+     panel (queue-panel.ts) and the visualizer panel (visualizer-panel.ts).
+
+     How tall the dock is, is the dock's to say: it measures itself and writes
+     `--dock-height` on <html> (dock.ts), and whatever has to stay clear of it —
+     the page's bottom padding, the two panels above it — takes that number. The
+     guesses that used to stand here (`10rem`, `12.5rem`, `14rem`, one per
+     breakpoint) were wrong whenever the dock's contents wrapped differently. */
+
+  html.has-audio-player .page-content {
+    padding-bottom: calc(var(--dock-height, 6rem) + var(--space-8));
+  }
+
+  /* ======================================================================
+     The dock
+     ====================================================================== */
+
+  /* One set of elements in four arrangements, chosen by the room the dock has
+     — its own width, not the window's (the sidebar takes 17rem of that on a
+     wide screen), hence the container queries:
+
+       92rem and wider   one row, everything in it
+       68rem – 92rem     one row; the volume slider tucks behind its button and
+                         the stars lose their caption, so the title keeps its room
+       46rem – 68rem     two rows, which can be folded to one
+       a phone           a mini-player that opens into a sheet (further down)
+
+     The first two used to be one: a single row down to a 1250 px window, where
+     the right-hand cluster (some 490 px of buttons) left the title a column of
+     a few letters. */
+  .audio-dock {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: var(--sidebar-width);
+    z-index: 55;
+    container: dock / inline-size;
+    border-top: 1px solid var(--color-border-strong);
+    /* The home indicator's strip (and a notch in landscape) as transparent
+       borders: the dock's glass runs under them, its controls stay clear of
+       them — whatever padding a narrower layout gives it further down. */
+    border-right: var(--safe-right) solid transparent;
+    border-bottom: var(--safe-bottom) solid transparent;
+    border-left: var(--safe-left) solid transparent;
+    background: rgb(var(--color-canvas-rgb) / 60%);
+    box-shadow: 0 -1.25rem 3rem rgb(var(--color-shadow-rgb) / 35%);
+    -webkit-backdrop-filter: blur(1.25rem) saturate(140%);
+    backdrop-filter: blur(1.25rem) saturate(140%);
+    transition: translate var(--duration-slow) var(--ease-out);
+  }
+
+  /* The dock is see-through and counts on the blur behind it. Where there is no
+     blur (an older Safari knows it only by its prefixed name, some browsers not
+     at all) it is simply nearly opaque — the page scrolling under it was
+     otherwise read straight through the controls. */
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .audio-dock {
+      background: rgb(var(--color-canvas-rgb) / 96%);
+    }
+  }
+
+  .audio-dock[aria-hidden="true"] {
+    display: none;
+  }
+
+  /* The first track of a visit: the dock comes up from the bottom edge. */
+  @starting-style {
+    .audio-dock {
+      translate: 0 100%;
+    }
+  }
+
+  /* Somebody is typing on a phone (shared/viewport.ts): the bar steps down out
+     of the way — on a screen with a keyboard on it there is no room to spare. */
+  html.has-keyboard .audio-dock:not(.is-sheet) {
+    translate: 0 calc(100% + 1rem);
+  }
+
+  /* Under a thumb (shared/sheet-gestures.ts) the sheet follows the finger, not a curve. */
+  .audio-dock.is-dragging {
+    transition: none;
+  }
+
+  /* Open as a sheet it takes the focus, so that Tab and Escape start from it. It
+     is a region, not a control: no ring around the whole screen. */
+  .audio-dock:focus {
+    outline: 0;
+  }
+
+  .audio-dock__ambient,
+  .audio-dock__line {
+    display: none;
+  }
+
+  .audio-dock__bar {
+    position: relative;
+    display: grid;
+    min-height: 5.75rem;
+    grid-template-areas: "track center right";
+    grid-template-columns: minmax(0, 1fr) minmax(20rem, 1.4fr) minmax(max-content, 1fr);
+    align-items: center;
+    gap: var(--space-5);
+    padding: var(--space-3) clamp(var(--space-4), 2cqi, var(--space-8));
+  }
+
+  .audio-dock__track,
+  .audio-dock__right,
+  .audio-dock__controls,
+  .audio-dock__timeline,
+  .audio-dock__extras,
+  .audio-dock__volume-group {
+    display: flex;
+    align-items: center;
+  }
+
+  .audio-dock__track {
+    min-width: 0;
+    grid-area: track;
+    gap: var(--space-3);
+  }
+
+  /* The cover's own cell exists for the phone's sheet, where the cover is as
+     large as the cell allows; everywhere else it is not there at all. */
+  .audio-dock__art-cell {
+    display: contents;
+  }
+
+  .audio-dock__artwork {
+    position: relative;
+    display: grid;
+    width: 3.5rem;
+    height: 3.5rem;
+    flex: 0 0 auto;
+    place-items: center;
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-accent-soft);
+    box-shadow: 0 0.4rem 1rem rgb(var(--color-shadow-rgb) / 30%);
+    color: var(--color-accent);
+  }
+
+  .audio-dock__artwork > .icon {
+    width: 1.35rem;
+    height: 1.35rem;
+  }
+
+  .audio-dock__artwork-image {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0;
+    transition: opacity var(--duration-normal) var(--ease-standard);
+  }
+
+  .audio-dock__artwork.has-image .audio-dock__artwork-image {
+    opacity: 1;
+  }
+
+  .audio-dock__copy {
+    min-width: 0;
+  }
+
+  .audio-dock__title,
+  .audio-dock__subtitle,
+  .audio-dock__technical {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .audio-dock__subtitle {
+    color: var(--color-text-muted);
+    font-size: 0.78rem;
+  }
+
+  .audio-dock__technical {
+    max-width: 100%;
+    margin-top: 0.15rem;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--color-text-subtle);
+    cursor: pointer;
+    font-size: 0.72rem;
+    letter-spacing: 0.015em;
+    text-align: left;
+    transition: opacity 140ms ease, translate 140ms ease, color 160ms ease;
+  }
+
+  .audio-dock__technical:hover {
+    color: var(--color-text-muted);
+  }
+
+  .audio-dock__technical.is-switching {
+    opacity: 0;
+    translate: 0 0.2rem;
+  }
+
+  /* "Playing from": playlist, smart playlist, folder, search or the whole
+     library — a link back to it. */
+  .audio-dock__source {
+    display: flex;
+    max-width: 100%;
+    align-items: center;
+    gap: 0.3rem;
+    margin-bottom: 0.15rem;
+    overflow: hidden;
+    color: var(--color-accent);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-decoration: none;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .audio-dock__source.hidden {
+    display: none;
+  }
+
+  .audio-dock__source .icon {
+    width: 0.9rem;
+    height: 0.9rem;
+    font-size: 0.72rem;
+  }
+
+  .audio-dock__source-kind {
+    flex: 0 0 auto;
+  }
+
+  .audio-dock__source-name {
+    min-width: 0;
+    overflow: hidden;
+    color: var(--color-text-muted);
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    text-overflow: ellipsis;
+    text-transform: none;
+    transition: color 160ms ease;
+  }
+
+  .audio-dock__source-name::before {
+    margin-right: 0.3rem;
+    color: var(--color-text-subtle);
+    content: "·";
+  }
+
+  .audio-dock__source:hover .audio-dock__source-name,
+  .audio-dock__source:focus-visible .audio-dock__source-name {
+    color: var(--color-text);
+  }
+
+  /* Three things a finger is meant to press, drawn at a mouse's size: the two
+     small lines of the dock are taller to the finger, not to the eye. Each is
+     padded out to about 44 px and the same amount is taken back with a negative
+     margin, so the dock stays as tall as it was — as a plain min-height the two
+     lines added 29 px to it. What the larger boxes overlap is the title and the
+     artist line, which do nothing when pressed. */
+  @media (pointer: coarse) {
+    .audio-dock__technical {
+      padding-block: 0.875rem;
+      margin-block: calc(0.15rem - 0.875rem) -0.875rem;
+    }
+
+    .audio-dock__source {
+      padding-block: 0.9rem;
+      margin-block: -0.9rem calc(0.15rem - 0.9rem);
+    }
+  }
+
+  .audio-dock__center {
+    display: grid;
+    min-width: 0;
+    grid-area: center;
+    gap: var(--space-1);
+  }
+
+  .audio-dock__controls {
+    justify-content: center;
+    gap: var(--space-2);
+  }
+
+  .audio-dock__timeline {
+    gap: var(--space-3);
+  }
+
+  .audio-dock__progress {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .audio-dock__time {
+    min-width: 2.6rem;
+    color: var(--color-text-muted);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .audio-dock__time--elapsed {
+    text-align: right;
+  }
+
+  .audio-dock__right {
+    min-width: 0;
+    grid-area: right;
+    justify-content: flex-end;
+    gap: var(--space-2);
+  }
+
+  .audio-dock__volume-group {
+    position: relative;
+    gap: var(--space-1);
+  }
+
+  .audio-dock__volume {
+    width: clamp(4.5rem, 8cqi, 7rem);
+  }
+
+  .audio-dock__extras {
+    gap: 0.15rem;
+  }
+
+  /* The buttons of the extras are a group of their own only where they have to
+     move as one (the phone's sheet); everywhere else they stand in the row. */
+  .audio-dock__tools {
+    display: contents;
+  }
+
+  .now-rating {
+    flex: 0 0 auto;
+  }
+
+  .now-rating .rating-picker {
+    gap: var(--space-1);
+    margin-top: 0;
+  }
+
+  .now-rating .rating-picker__label {
+    width: 4.6rem;
+    min-width: 4.6rem;
+    max-width: 4.6rem;
+    flex: 0 0 4.6rem;
+  }
+
+  /* --- The transport's buttons ------------------------------------------------- */
+  /* A finger needs about 44 px; a mouse keeps the tighter, quieter row. The size
+     has a name because the dock leaves room for one of these (the fold control). */
+  :root {
+    --player-control-size: 2.35rem;
+  }
+
+  @media (pointer: coarse) {
+    :root {
+      --player-control-size: 2.75rem;
+    }
+  }
+
+  .player-control {
+    position: relative;
+    display: grid;
+    width: var(--player-control-size);
+    height: var(--player-control-size);
+    flex: 0 0 auto;
+    place-items: center;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    transition:
+      background var(--duration-fast) var(--ease-standard),
+      color var(--duration-fast) var(--ease-standard),
+      box-shadow var(--duration-normal) var(--ease-standard),
+      scale 90ms var(--ease-standard);
+  }
+
+  .player-control:hover,
+  .player-control.is-active {
+    background: var(--color-surface-hover);
+    color: var(--color-accent);
+  }
+
+  .player-control:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+  }
+
+  .player-control:active:not(:disabled) {
+    scale: 0.92;
+  }
+
+  .player-control[data-badge]:not([data-badge=""])::after {
+    position: absolute;
+    right: -0.2rem;
+    bottom: -0.1rem;
+    display: grid;
+    min-width: 0.95rem;
+    height: 0.95rem;
+    place-items: center;
+    padding-inline: 0.16rem;
+    border: 1px solid var(--color-canvas-raised);
+    border-radius: 999px;
+    background: var(--color-accent);
+    color: var(--color-on-accent);
+    content: attr(data-badge);
+    /* One or two characters in a disc on the corner of a button: as large as the
+       disc allows. */
+    font-size: 0.62rem;
+    font-weight: 900;
+    line-height: 1;
+  }
+
+  .player-control--primary {
+    width: 3rem;
+    height: 3rem;
+    background: var(--color-accent);
+    color: var(--color-on-accent);
+  }
+
+  .player-control--primary:hover {
+    background: var(--color-accent-hover);
+    color: var(--color-on-accent);
+  }
+
+  .audio-dock.is-playing .player-control--primary {
+    box-shadow: var(--glow-accent);
+  }
+
+  /* A favourite keeps its own colour, in the dock as on a card. */
+  .audio-dock__favorite.is-active {
+    color: var(--color-favorite);
+  }
+
+  @media (pointer: coarse) {
+    .player-control--primary {
+      width: 3.25rem;
+      height: 3.25rem;
+    }
+  }
+
+  /* --- A slider drawn in the theme ------------------------------------------------
+     The timeline and the volume. The filled part is the theme's progress line,
+     uncovered up to where the slider stands (`--fill`, written by dock.ts): the
+     gradient lies under the whole track and the unfilled remainder is painted
+     over it, so the far end of the line — in the second theme, the red of the
+     signature — is reached only by a track that is nearly over. */
+  .range {
+    --fill: 0%;
+    --range-track: 0.3rem;
+    --range-thumb: 0.9rem;
+    height: 1.4rem;
+    margin: 0;
+    padding: 0;
+    border-radius: 999px;
+    appearance: none;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .range::-webkit-slider-runnable-track {
+    height: var(--range-track);
+    border-radius: 999px;
+    background:
+      linear-gradient(to right, transparent var(--fill), var(--color-border-strong) var(--fill)),
+      var(--gradient-progress);
+  }
+
+  .range::-moz-range-track {
+    height: var(--range-track);
+    border-radius: 999px;
+    background:
+      linear-gradient(to right, transparent var(--fill), var(--color-border-strong) var(--fill)),
+      var(--gradient-progress);
+  }
+
+  .range::-webkit-slider-thumb {
+    width: var(--range-thumb);
+    height: var(--range-thumb);
+    margin-top: calc((var(--range-track) - var(--range-thumb)) / 2);
+    border: 0;
+    border-radius: 50%;
+    appearance: none;
+    background: var(--color-text);
+    box-shadow: 0 0.1rem 0.4rem rgb(var(--color-shadow-rgb) / 50%);
+  }
+
+  .range::-moz-range-thumb {
+    width: var(--range-thumb);
+    height: var(--range-thumb);
+    border: 0;
+    border-radius: 50%;
+    background: var(--color-text);
+    box-shadow: 0 0.1rem 0.4rem rgb(var(--color-shadow-rgb) / 50%);
+  }
+
+  /* Under a mouse the handle is there when the slider is pointed at; under a
+     finger it has to be seen to be taken hold of. */
+  @media (hover: hover) and (pointer: fine) {
+    .range:not(:hover, :focus-visible, :active)::-webkit-slider-thumb {
+      opacity: 0;
+    }
+
+    .range:not(:hover, :focus-visible, :active)::-moz-range-thumb {
+      opacity: 0;
+    }
+  }
+
+  @media (pointer: coarse) {
+    .range {
+      --range-track: 0.35rem;
+      --range-thumb: 1.1rem;
+      height: 2.75rem;
+    }
+  }
+
+  /* --- Folding, and the control for it ---------------------------------------------
+     Where the dock stands in two rows it can be folded to one, and it stays the
+     way it was left (dock.ts decides where folding is on offer and says so with
+     `is-foldable`; a desktop's single row folds only where the operator allowed
+     it). Folded, the technical line and the extras go — all but the queue, which
+     stays one press away — and the timeline stays: knowing where you are in a
+     track is the point of the bar.
+
+     The control is one of the dock's own buttons, standing at the end of the row
+     of extras, which keeps a place clear for it. It used to be a ghost in the
+     corner, 22% opaque, that showed itself for three seconds after a touch. */
+  .audio-dock__collapse {
+    display: none;
+    grid-area: right;
+    justify-self: end;
+  }
+
+  .audio-dock.is-foldable .audio-dock__collapse {
+    display: grid;
+  }
+
+  .audio-dock.is-foldable .audio-dock__right {
+    padding-right: calc(var(--player-control-size) + var(--space-1));
+  }
+
+  .audio-dock__collapse .icon {
+    rotate: 90deg;
+    transition: rotate var(--duration-normal) var(--ease-out);
+  }
+
+  .audio-dock.is-collapsed .audio-dock__collapse .icon {
+    rotate: -90deg;
+  }
+
+  .audio-dock.is-collapsed :is(.audio-dock__source, .audio-dock__technical, .audio-dock__volume-group, .now-rating),
+  .audio-dock.is-collapsed .audio-dock__tools > :not(.audio-dock__queue) {
+    display: none;
+  }
+
+  /* One row means one row: the transport stands beside the timeline, not over it. */
+  .audio-dock.is-collapsed .audio-dock__bar {
+    min-height: 0;
+    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.6fr) auto;
+    padding-block: var(--space-2);
+  }
+
+  .audio-dock.is-collapsed .audio-dock__center {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+  }
+
+  .audio-dock.is-collapsed .audio-dock__timeline {
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  /* A device whose volume is not the page's to set (an iPhone: the keys on its
+     side are the only volume it has — dock.ts asks) is not shown a slider that
+     would do nothing. Muting works there, so the button stays. */
+  .audio-dock.has-fixed-volume .audio-dock__volume {
+    display: none;
+  }
+
+  /* --- One row, tightened ----------------------------------------------------------- */
+  @container dock (68rem < width <= 92rem) {
+    .now-rating .rating-picker__label {
+      display: none;
+    }
+
+    /* The slider waits behind its button and comes out when the button is
+       pointed at or focused. */
+    .audio-dock__volume {
+      position: absolute;
+      right: 50%;
+      bottom: calc(100% + 0.35rem);
+      width: 8rem;
+      height: 2.2rem;
+      padding-inline: var(--space-3);
+      border: 1px solid var(--color-border-strong);
+      background: var(--color-canvas-raised);
+      box-shadow: var(--shadow-float);
+      opacity: 0;
+      pointer-events: none;
+      translate: 50% 0.35rem;
+      transition: opacity var(--duration-fast) var(--ease-standard), translate var(--duration-normal) var(--ease-out);
+    }
+
+    /* The way from the button up to the slider, so the pointer does not lose it on the way. */
+    .audio-dock__volume-group::before {
+      position: absolute;
+      right: 0;
+      bottom: 100%;
+      left: 0;
+      height: 0.6rem;
+      content: "";
+    }
+
+    .audio-dock__volume-group:is(:hover, :focus-within) .audio-dock__volume {
+      opacity: 1;
+      pointer-events: auto;
+      translate: 50% 0;
+    }
+  }
+
+  /* --- Two rows ------------------------------------------------------------------------ */
+  @container dock (width <= 68rem) {
+    .audio-dock__bar {
+      grid-template-areas:
+        "track center"
+        "right right";
+      grid-template-columns: minmax(12rem, 0.9fr) minmax(18rem, 1.2fr);
+      row-gap: var(--space-2);
+    }
+
+    /* The extras (volume, stars, favourite, edit, download, visualizer, queue) on a row of their own. */
+    .audio-dock__right {
+      gap: var(--space-1);
+    }
+
+    .audio-dock__volume {
+      width: clamp(4.5rem, 14cqi, 7rem);
+    }
+
+    .audio-dock.is-collapsed .audio-dock__bar {
+      grid-template-areas: "track center right";
+    }
+
+    /* Folded and narrow: what there is no room for goes — the two modes, and
+       the second of the two times. */
+    .audio-dock.is-collapsed :is(.audio-dock__shuffle, .audio-dock__repeat, .audio-dock__time--total) {
+      display: none;
+    }
+  }
+
+  @media (max-width: 64rem) {
+    .audio-dock {
+      left: 0;
+    }
+  }
+
+  /* ======================================================================
+     A phone: the mini-player and its sheet
+     ====================================================================== */
+
+  /* "A phone" is a narrow screen, or a short one held sideways: on either, a
+     dock of two rows would take a third of what there is. dock.ts asks the same
+     question in the same words (PHONE_PLAYER in player/contracts.ts).
+
+     Sizes here are fluid, between what a 320 px phone can hold and what a large
+     one should not exceed: `vmin` for what must fit both ways up (a phone held
+     sideways is 390 px tall), `dvh` for what shares the height of the sheet, the
+     safe-area insets wherever an edge is touched. Nothing is a fixed number of
+     pixels, so there is no phone it is wrong for. */
+  @media (max-width: 46rem), (max-width: 64rem) and (max-height: 30rem) and (orientation: landscape) {
+    /* --- The mini-player: the cover, the title, play, next and the queue ------------ */
+
+    /* How far the track is, along the bar's top edge. Drawn by uncovering a line
+       that is always whole (`--progress`, 0 to 1, from dock.ts): no layout. */
+    .audio-dock__line {
+      position: absolute;
+      inset: 0 0 auto;
+      z-index: 1;
+      display: block;
+      height: 0.14rem;
+      background: rgb(var(--color-highlight-rgb) / 10%);
+    }
+
+    .audio-dock__line-fill {
+      display: block;
+      height: 100%;
+      background: var(--gradient-progress);
+      clip-path: inset(0 calc(100% - var(--progress, 0) * 100%) 0 0);
+    }
+
+    .audio-dock.is-collapsed .audio-dock__bar {
+      min-height: clamp(3.75rem, 17vmin, 4.6rem);
+      grid-template-areas: "track center right";
+      grid-template-columns: minmax(0, 1fr) auto auto;
+      gap: clamp(0.25rem, 2vmin, 0.75rem);
+      padding: clamp(0.7rem, 2.8vmin, 0.85rem) clamp(0.6rem, 3.5vw, 1rem) clamp(0.35rem, 1.8vmin, 0.55rem);
+    }
+
+    /* Pressed anywhere that is not a button, the bar opens (dock.ts). */
+    .audio-dock.is-collapsed .audio-dock__track {
+      gap: clamp(0.5rem, 2.6vw, 0.75rem);
+      cursor: pointer;
+    }
+
+    .audio-dock.is-collapsed .audio-dock__artwork {
+      width: clamp(2.6rem, 11.5vmin, 3.2rem);
+      height: clamp(2.6rem, 11.5vmin, 3.2rem);
+      border-radius: var(--radius-sm);
+    }
+
+    .audio-dock.is-collapsed .audio-dock__title {
+      font-size: clamp(0.9rem, 3.9vmin, 1rem);
+    }
+
+    .audio-dock.is-collapsed :is(.audio-dock__timeline, .audio-dock__shuffle, .audio-dock__previous, .audio-dock__repeat) {
+      display: none;
+    }
+
+    .audio-dock.is-collapsed .audio-dock__controls {
+      gap: clamp(0rem, 1vw, 0.35rem);
+    }
+
+    .audio-dock.is-collapsed .audio-dock__right {
+      padding-right: 0;
+    }
+
+    /* Held sideways there is room for one more: back to the previous track. */
+    @container dock (width >= 36rem) {
+      .audio-dock.is-collapsed .audio-dock__previous {
+        display: grid;
+      }
+    }
+
+    /* The grabber: says the bar can be opened, and — for a keyboard or a screen
+       reader, which have no thumb to push it up with — opens it. */
+    .audio-dock.is-collapsed .audio-dock__collapse {
+      position: absolute;
+      top: 0.14rem;
+      left: 50%;
+      display: grid;
+      width: 4.5rem;
+      height: 0.6rem;
+      grid-area: auto;
+      border-radius: 0.3rem;
+      background: transparent;
+      translate: -50% 0;
+    }
+
+    .audio-dock.is-collapsed .audio-dock__collapse .icon {
+      display: none;
+    }
+
+    .audio-dock.is-collapsed .audio-dock__collapse::after {
+      width: 2.25rem;
+      height: 0.2rem;
+      border-radius: 999px;
+      background: var(--color-border-contrast);
+      content: "";
+      opacity: 0.75;
+    }
+
+    /* --- The sheet: everything, over the whole screen ------------------------------- */
+    .audio-dock.is-sheet {
+      top: 0;
+      z-index: 56;
+      overflow: hidden;
+      isolation: isolate;
+      border-top: var(--safe-top) solid transparent;
+      background: var(--color-canvas-raised);
+      box-shadow: none;
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+    }
+
+    /* The cover again, enlarged and blurred until it is only colour: the sheet
+       takes the mood of what is playing. Drawn once; nothing moves it. */
+    .audio-dock.is-sheet .audio-dock__ambient {
+      position: absolute;
+      z-index: -1;
+      inset: -25%;
+      display: block;
+      width: 150%;
+      height: 150%;
+      object-fit: cover;
+      filter: blur(3.5rem) saturate(1.35);
+      opacity: 0.34;
+    }
+
+    .audio-dock.is-sheet .audio-dock__ambient:not([src]),
+    .audio-dock.is-sheet .audio-dock__ambient[src=""] {
+      display: none;
+    }
+
+    .audio-dock.is-sheet .audio-dock__line {
+      display: none;
+    }
+
+    .audio-dock.is-sheet .audio-dock__bar {
+      height: 100%;
+      min-height: 0;
+      grid-template-areas:
+        "head"
+        "art"
+        "copy"
+        "extras"
+        "time"
+        "controls"
+        "volume";
+      grid-template-rows: auto minmax(0, 1fr) auto auto auto auto auto;
+      grid-template-columns: minmax(0, 1fr);
+      gap: clamp(0.5rem, 2dvh, 1.25rem);
+      padding: clamp(0.75rem, 1.8dvh, 1.1rem) clamp(0.9rem, 5vw, 2rem) clamp(1rem, 3dvh, 2rem);
+      background: linear-gradient(180deg, rgb(var(--color-canvas-rgb) / 20%), rgb(var(--color-canvas-rgb) / 72%));
+    }
+
+    .audio-dock.is-sheet :is(.audio-dock__track, .audio-dock__center, .audio-dock__right) {
+      display: contents;
+    }
+
+    /* A pill at the top, like every sheet's: it can be pulled down. */
+    .audio-dock.is-sheet .audio-dock__bar::before {
+      position: absolute;
+      top: 0.4rem;
+      left: 50%;
+      width: 2.5rem;
+      height: 0.25rem;
+      border-radius: 999px;
+      background: var(--color-border-contrast);
+      content: "";
+      opacity: 0.7;
+      translate: -50% 0;
+    }
+
+    .audio-dock.is-sheet .audio-dock__collapse {
+      display: grid;
+      width: 2.75rem;
+      height: 2.75rem;
+      grid-area: head;
+      justify-self: start;
+      background: rgb(var(--color-highlight-rgb) / 8%);
+      color: var(--color-text);
+    }
+
+    /* The cover is as large as its row and the screen's width allow, and square. */
+    .audio-dock.is-sheet .audio-dock__art-cell {
+      display: grid;
+      height: 100%;
+      min-height: 0;
+      grid-area: art;
+      place-items: center;
+      container-type: size;
+    }
+
+    .audio-dock.is-sheet .audio-dock__artwork {
+      width: min(100cqw, 100cqh, 26rem);
+      height: auto;
+      aspect-ratio: 1;
+      border-color: rgb(var(--color-highlight-rgb) / 14%);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow-float);
+    }
+
+    .audio-dock.is-sheet .audio-dock__artwork > .icon {
+      width: 28%;
+      height: 28%;
+      font-size: clamp(2rem, 14cqw, 4rem);
+    }
+
+    .audio-dock.is-sheet .audio-dock__copy {
+      grid-area: copy;
+    }
+
+    .audio-dock.is-sheet .audio-dock__title {
+      display: -webkit-box;
+      overflow: hidden;
+      font-size: clamp(1.15rem, 5.4vmin, 1.6rem);
+      letter-spacing: -0.02em;
+      line-height: 1.2;
+      white-space: normal;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      line-clamp: 2;
+    }
+
+    .audio-dock.is-sheet .audio-dock__subtitle {
+      margin-top: 0.2rem;
+      font-size: clamp(0.85rem, 3.6vmin, 1rem);
+    }
+
+    /* The stars to the left, the buttons to the right — and where the screen is
+       too narrow for both on one line (a 320 px phone, or a narrow one with every
+       button there is), the buttons take the next line together. */
+    .audio-dock.is-sheet .audio-dock__extras {
+      flex-wrap: wrap;
+      grid-area: extras;
+      justify-content: space-between;
+      gap: var(--space-1) var(--space-2);
+    }
+
+    .audio-dock.is-sheet .audio-dock__tools {
+      display: flex;
+      align-items: center;
+      gap: var(--space-1);
+      margin-left: auto;
+    }
+
+    .audio-dock.is-sheet .now-rating .rating-picker__label {
+      display: none;
+    }
+
+    /* Larger stars for a thumb: the place pressed along the row is the rating. */
+    .audio-dock.is-sheet .rating-picker__stars {
+      width: 7.5rem;
+      height: 2.75rem;
+      grid-template-columns: repeat(5, 1.5rem);
+    }
+
+    .audio-dock.is-sheet .rating-picker__stars > .rating-star-visual {
+      font-size: 1.35rem;
+    }
+
+    .audio-dock.is-sheet .audio-dock__timeline {
+      display: grid;
+      grid-area: time;
+      grid-template-areas:
+        "bar bar"
+        "elapsed total";
+      grid-template-columns: 1fr 1fr;
+      gap: 0 var(--space-3);
+    }
+
+    .audio-dock.is-sheet .audio-dock__progress {
+      width: 100%;
+      grid-area: bar;
+    }
+
+    .audio-dock.is-sheet .audio-dock__time--elapsed {
+      grid-area: elapsed;
+      text-align: left;
+    }
+
+    .audio-dock.is-sheet .audio-dock__time--total {
+      grid-area: total;
+      text-align: right;
+    }
+
+    .audio-dock.is-sheet .audio-dock__controls {
+      width: min(100%, 24rem);
+      grid-area: controls;
+      justify-content: space-between;
+      justify-self: center;
+    }
+
+    .audio-dock.is-sheet .player-control--primary {
+      width: clamp(3.75rem, 18vmin, 4.75rem);
+      height: clamp(3.75rem, 18vmin, 4.75rem);
+    }
+
+    .audio-dock.is-sheet .player-control--primary .icon {
+      width: 1.5rem;
+      height: 1.5rem;
+      font-size: 1.35rem;
+    }
+
+    .audio-dock.is-sheet :is(.audio-dock__previous, .audio-dock__next) {
+      width: 3.25rem;
+      height: 3.25rem;
+    }
+
+    .audio-dock.is-sheet .audio-dock__volume-group {
+      grid-area: volume;
+      gap: var(--space-2);
+    }
+
+    .audio-dock.is-sheet .audio-dock__volume {
+      width: auto;
+      min-width: 0;
+      flex: 1 1 auto;
+    }
+
+    /* The keys on the phone's side are its volume: no row for a button that only mutes. */
+    .audio-dock.is-sheet.has-fixed-volume .audio-dock__volume-group {
+      display: none;
+    }
+
+    /* A screen that is not tall: what a phone has keys for goes first, then the fine print. */
+    @media (max-height: 50rem) {
+      .audio-dock.is-sheet .audio-dock__volume-group {
+        display: none;
+      }
+    }
+
+    @media (max-height: 38rem) {
+      .audio-dock.is-sheet .audio-dock__technical {
+        display: none;
+      }
+
+      .audio-dock.is-sheet .audio-dock__bar {
+        gap: clamp(0.35rem, 1.4dvh, 0.75rem);
+      }
+    }
+
+    /* Held sideways: the cover beside the controls instead of over them, the
+       button that closes the sheet in the corner beside the title, and the
+       timeline back on one line — height is what there is least of. */
+    @media (orientation: landscape) and (max-height: 32rem) {
+      .audio-dock.is-sheet .audio-dock__bar {
+        grid-template-areas:
+          "art copy head"
+          "art extras extras"
+          "art time time"
+          "art controls controls";
+        grid-template-rows: minmax(0, 1fr) auto auto auto;
+        grid-template-columns: minmax(0, 38%) minmax(0, 1fr) auto;
+        gap: clamp(0.25rem, 1.6dvh, 0.6rem) clamp(0.75rem, 3vw, 1.5rem);
+        padding-block: clamp(0.5rem, 2dvh, 1rem);
+      }
+
+      .audio-dock.is-sheet .audio-dock__collapse {
+        align-self: start;
+        justify-self: end;
+      }
+
+      .audio-dock.is-sheet .audio-dock__copy {
+        align-self: end;
+      }
+
+      .audio-dock.is-sheet :is(.audio-dock__volume-group, .audio-dock__technical) {
+        display: none;
+      }
+
+      .audio-dock.is-sheet .audio-dock__title {
+        -webkit-line-clamp: 1;
+        line-clamp: 1;
+      }
+
+      .audio-dock.is-sheet .audio-dock__timeline {
+        display: flex;
+        gap: var(--space-3);
+      }
+
+      .audio-dock.is-sheet .audio-dock__time--elapsed {
+        text-align: right;
+      }
+
+      .audio-dock.is-sheet .audio-dock__time--total {
+        text-align: left;
+      }
+
+      .audio-dock.is-sheet .player-control--primary {
+        width: clamp(3.25rem, 15vmin, 4rem);
+        height: clamp(3.25rem, 15vmin, 4rem);
+      }
+
+      /* No pill: sideways, the sheet's top edge is the short way down. The button closes it. */
+      .audio-dock.is-sheet .audio-dock__bar::before {
+        content: none;
+      }
+
+      @media (max-height: 20rem) {
+        .audio-dock.is-sheet .audio-dock__source {
+          display: none;
+        }
+      }
+    }
+  }
+
+  /* ======================================================================
+     The queue panel
+     ====================================================================== */
+
+  /* Both of the player's panels open and close the way dialogs do
+     (styles/motion.css): `display` waits for the exit, `@starting-style` is the
+     first frame of the entrance, and a browser that knows neither shows and
+     hides them at once. */
+  .queue-backdrop,
+  .visualizer-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgb(var(--color-overlay-rgb) / 54%);
+    cursor: default;
+    transition: opacity var(--duration-normal) var(--ease-standard), display var(--duration-exit) allow-discrete;
+  }
+
+  .queue-backdrop {
+    z-index: 54;
+  }
+
+  .visualizer-backdrop {
+    z-index: 51;
+  }
+
+  .queue-backdrop[aria-hidden="true"],
+  .visualizer-backdrop[aria-hidden="true"] {
+    display: none;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  @starting-style {
+    .queue-backdrop,
+    .visualizer-backdrop {
+      opacity: 0;
+    }
+  }
+
+  /* On a wide screen the panel grows out of the corner its button is in. */
+  .queue-panel {
+    position: fixed;
+    right: var(--space-5);
+    bottom: calc(var(--dock-height, 6rem) + var(--space-3));
+    z-index: 57;
+    display: grid;
+    width: min(31rem, calc(100vw - 2 * var(--space-5)));
+    max-height: min(64dvh, 40rem);
+    grid-template-rows: auto minmax(0, 1fr);
+    overflow: hidden;
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-xl);
+    background: var(--color-canvas-raised);
+    box-shadow: var(--shadow-float);
+    transform-origin: 100% 100%;
+    transition:
+      opacity var(--duration-normal) var(--ease-out),
+      scale var(--duration-normal) var(--ease-out),
+      translate var(--duration-normal) var(--ease-out),
+      display var(--duration-exit) allow-discrete;
+  }
+
+  .queue-panel[aria-hidden="true"] {
+    display: none;
+    opacity: 0;
+    pointer-events: none;
+    scale: 0.96;
+    translate: 0 0.5rem;
+    transition:
+      opacity var(--duration-exit) var(--ease-exit),
+      scale var(--duration-exit) var(--ease-exit),
+      translate var(--duration-exit) var(--ease-exit),
+      display var(--duration-exit) allow-discrete;
+  }
+
+  @starting-style {
+    .queue-panel {
+      opacity: 0;
+      scale: 0.96;
+      translate: 0 0.5rem;
+    }
+  }
+
+  .queue-panel__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-4);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .queue-panel__heading {
+    min-width: 0;
+  }
+
+  .queue-panel__context {
+    max-width: min(32rem, 72vw);
+    margin: 0.15rem 0 0.25rem;
+    overflow: hidden;
+    color: var(--color-accent);
+    font-size: 0.82rem;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .queue-panel__meta {
+    display: block;
+    margin-top: var(--space-1);
+    color: var(--color-text-muted);
+    font-size: 0.75rem;
+  }
+
+  /* What the account is playing elsewhere. Capped and scrollable on its own, so
+     three devices cannot push the queue itself off the panel; tall enough for a
+     live device and a recent one under their two headings, never more than a
+     good third of a phone's height. */
+  .queue-devices {
+    max-height: min(15rem, 38vh);
+    padding: var(--space-3) var(--space-4);
+    overflow-y: auto;
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-surface);
+    scrollbar-width: thin;
+  }
+
+  .queue-devices__title {
+    margin-bottom: var(--space-2);
+    color: var(--color-text-subtle);
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .queue-devices__row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-2) 0;
+  }
+
+  .queue-devices__row + .queue-devices__row {
+    border-top: 1px solid var(--color-border);
+  }
+
+  .queue-devices__copy {
+    display: grid;
+    min-width: 0;
+    gap: 0.1rem;
+  }
+
+  .queue-devices__copy > * {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .queue-devices__copy > strong {
+    font-size: 0.82rem;
+  }
+
+  .queue-devices__copy > span {
+    color: var(--color-text-muted);
+    font-size: 0.78rem;
+  }
+
+  .queue-devices__copy > small {
+    color: var(--color-text-subtle);
+    font-size: 0.68rem;
+  }
+
+  .queue-devices__row.is-playing .queue-devices__copy > small {
+    color: var(--color-accent);
+  }
+
+  .queue-devices__row + .queue-devices__title {
+    margin-top: var(--space-3);
+  }
+
+  .queue-devices__actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+  }
+
+  .queue-devices__take {
+    flex: 0 0 auto;
+    padding: 0.35rem 0.7rem;
+    font-size: 0.78rem;
+  }
+
+  /* "Zapomnij": a quiet × beside "Wznów tutaj", only on devices whose session
+     has ended; still a 44 px target on a touch screen. */
+  .queue-devices__forget {
+    width: 2.25rem;
+    min-height: 2.25rem;
+    border-color: transparent;
+    background: transparent;
+    color: var(--color-text-subtle);
+  }
+
+  .queue-devices__forget:hover:not(:disabled) {
+    color: var(--color-text);
+  }
+
+  .queue-panel__shuffle-toggle {
+    display: block;
+    margin-top: var(--space-2);
+    padding: 0.3rem 0.55rem;
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    background: var(--color-surface);
+    color: var(--color-text-muted);
+    cursor: pointer;
+    font-size: 0.72rem;
+    text-align: left;
+  }
+
+  @media (pointer: coarse) {
+    .queue-devices__forget {
+      width: 2.75rem;
+      min-height: 2.75rem;
+    }
+
+    .queue-panel__shuffle-toggle {
+      min-height: 2.75rem;
+      padding-inline: var(--space-3);
+    }
+  }
+
+  .queue-panel__shuffle-toggle[aria-pressed="true"] {
+    border-color: var(--color-accent-strong);
+    background: var(--color-accent-soft);
+    color: var(--color-accent);
+  }
+
+  .queue-window-sentinel {
+    width: 100%;
+    min-height: 2.75rem;
+    padding: var(--space-2) var(--space-4);
+    background: var(--color-canvas-raised);
+    color: var(--color-info);
+    cursor: pointer;
+    font-size: 0.78rem;
+    font-weight: 700;
+  }
+
+  .queue-window-sentinel:hover,
+  .queue-window-sentinel:focus-visible {
+    background: var(--color-surface-hover);
+    color: var(--color-text);
+  }
+
+  .queue-panel__list {
+    overflow-y: auto;
+    overflow-anchor: none;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+  }
+
+  .queue-item {
+    display: grid;
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    border-bottom: 1px solid var(--color-border);
+    background: transparent;
+    color: var(--color-text-muted);
+    scroll-margin-block: 4rem;
+    text-align: left;
+    transition: background var(--duration-fast) var(--ease-standard), color var(--duration-fast) var(--ease-standard);
+  }
+
+  .queue-item__main {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    text-align: left;
+  }
+
+  /* Where the row stands in the listing; sized to its content — a five-digit
+     position in a library of tens of thousands used to run into the title at a
+     fixed 2rem. On the row that is playing, three bars stand in its place. A
+     queue shown without positions has this cell only on that one row. */
+  .queue-item__lead {
+    display: grid;
+    min-width: 1.75rem;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-items: end;
+  }
+
+  .queue-item:not([aria-current="true"]) .queue-item__lead:not(:has(.queue-item__index)) {
+    display: none;
+  }
+
+  .queue-item__index {
+    color: var(--color-text-muted);
+    font-size: 0.85rem;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .queue-item[aria-current="true"] .queue-item__index {
+    display: none;
+  }
+
+  /* --- What is playing moves with the music ---------------------------------------
+     Three bars: on the playing row of the queue, and on the card of the playing
+     track in the library. They run while the music does (`is-audio-playing` on
+     <html>, set by the player) and stand still when it stops; under reduced
+     motion they are three bars of different heights and never move. */
+  .playing-bars {
+    display: none;
+    height: 0.85rem;
+    align-items: flex-end;
+    gap: 0.14rem;
+  }
+
+  .queue-item[aria-current="true"] .playing-bars {
+    display: inline-flex;
+  }
+
+  .playing-bars > i {
+    width: 0.2rem;
+    height: 100%;
+    border-radius: 0.08rem;
+    background: var(--color-accent);
+    transform: scaleY(0.6);
+    transform-origin: 50% 100%;
+  }
+
+  .playing-bars > i:nth-child(2) {
+    transform: scaleY(1);
+  }
+
+  .playing-bars > i:nth-child(3) {
+    transform: scaleY(0.4);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .playing-bars > i {
+      animation: playing-bar 900ms ease-in-out infinite paused;
+    }
+
+    .playing-bars > i:nth-child(2) {
+      animation-duration: 700ms;
+      animation-delay: -220ms;
+    }
+
+    .playing-bars > i:nth-child(3) {
+      animation-duration: 1100ms;
+      animation-delay: -480ms;
+    }
+
+    html.is-audio-playing .playing-bars > i {
+      animation-play-state: running;
+    }
+
+    @keyframes playing-bar {
+      0%,
+      100% {
+        transform: scaleY(0.3);
+      }
+
+      50% {
+        transform: scaleY(1);
+      }
+    }
+
+    /* The rows in view arrive one after another when the panel opens
+       (queue-panel.ts marks a dozen of them, each with its turn). */
+    .queue-item[data-arriving] {
+      animation: queue-row-arrive 260ms var(--ease-out) backwards;
+      animation-delay: calc(60ms + var(--row-step, 0) * 22ms);
+    }
+
+    @keyframes queue-row-arrive {
+      from {
+        opacity: 0;
+        transform: translateY(0.4rem);
+      }
+    }
+  }
+
+  .queue-item__copy {
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  /* The heart, the star and the number say one thing about the track, so they sit
+     together as a cluster; the duration is a separate fact and keeps the wider
+     gap. Spacing them all equally pushed the cluster left and ate title width. */
+  .queue-item__meta {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.22rem;
+    color: var(--color-text-muted);
+    font-size: 0.85rem;
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+
+  .queue-item__favorite,
+  .queue-item__rating {
+    display: inline-flex;
+    height: 1.2em;
+    align-items: center;
+  }
+
+  /* Font Awesome sits a glyph higher above its baseline than digits sit above
+     theirs, so icon boxes sharing a centre with the text still read as too high.
+     The shifts below are measured on the rendered page: each baseline is read
+     out of the layout (a zero-sized inline-block sits exactly on one) and
+     compared with the ink extents of the glyph and of the duration. Left alone,
+     the heart's ink runs 3.6px above the digits and stops 0.6px short of their
+     foot; the star 5.6px above and 0.4px below. */
+  .queue-item__favorite .icon__glyph {
+    transform: translateY(0.157em);
+  }
+
+  .queue-item__rating .icon__glyph {
+    transform: translateY(0.194em);
+  }
+
+  .queue-item__favorite {
+    color: var(--color-favorite);
+  }
+
+  .queue-item__rating {
+    /* A hair of space between the star and the number: they used to touch. */
+    gap: 0.3em;
+    color: var(--color-warning);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* The glyph is wider than the icon box the shared rule gives it (Font Awesome
+     stars are ~1.25em), so it used to spill over the number next to it. Let the
+     box size to the glyph and keep the spacing to the flex gap. */
+  .queue-item__meta .icon {
+    display: inline-flex;
+    width: auto;
+    height: 1.2em;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+  }
+
+  .queue-item__meta .icon__glyph {
+    display: inline-block;
+    width: auto;
+    line-height: 1;
+  }
+
+  .queue-item__duration {
+    display: inline-flex;
+    height: 1.2em;
+    align-items: center;
+    margin-left: 0.2rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .queue-item__collection {
+    margin-right: var(--space-3);
+  }
+
+  .queue-item:hover,
+  .queue-item[aria-current="true"] {
+    background: var(--color-accent-soft);
+    color: var(--color-text);
+  }
+
+  /* Landing flash after a random jump through the whole library. */
+  .queue-item--jumped {
+    animation: queue-item-jumped 1.4s ease-out;
+  }
+
+  @keyframes queue-item-jumped {
+    0% { box-shadow: inset 0 0 0 2px var(--color-accent); background: var(--color-accent); color: var(--color-on-accent); }
+    60% { box-shadow: inset 0 0 0 2px var(--color-accent); }
+    100% { box-shadow: inset 0 0 0 0 transparent; }
+  }
+
+  .queue-item__copy,
+  .queue-item__copy strong,
+  .queue-item__copy small {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+
+  /* The line that carries the text sits inside the row's clipping box. Sliding
+     this instead of the box itself is the whole point: moving the box took its
+     own clip window along, so the hidden part of a title never came into view. */
+  .queue-item__line {
+    display: inline-block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: bottom;
+    white-space: nowrap;
+  }
+
+  /* A title too long for the row scrolls its full text while the row is hovered
+     or focused, then returns. The row marks which lines actually overflow
+     (data-overflow), so short titles never move. The pace comes from the distance
+     (--queue-marquee-time), so a long title is not slower, only longer on the way. */
+  .queue-item:hover .queue-item__copy [data-overflow="true"] .queue-item__line,
+  .queue-item__main:focus-visible .queue-item__copy [data-overflow="true"] .queue-item__line {
+    max-width: none;
+    animation: queue-marquee var(--queue-marquee-time, 6s) ease-in-out infinite;
+    text-overflow: clip;
+  }
+
+  @keyframes queue-marquee {
+    0%, 8% { transform: translateX(0); }
+    45%, 55% { transform: translateX(calc(-1 * var(--queue-marquee-shift, 0px))); }
+    92%, 100% { transform: translateX(0); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .queue-item--jumped {
+      animation: none;
+    }
+
+    .queue-item:hover .queue-item__copy [data-overflow="true"] .queue-item__line,
+    .queue-item__main:focus-visible .queue-item__copy [data-overflow="true"] .queue-item__line {
+      max-width: 100%;
+      animation: none;
+      text-overflow: ellipsis;
+    }
+  }
+
+  /* A phone: the queue is a sheet that comes up from behind the mini-player (it
+     lies under the dock, above its own backdrop) and can be pulled back down. */
+  @media (max-width: 46rem) {
+    .queue-backdrop {
+      z-index: 53;
+    }
+
+    .queue-panel {
+      right: 0;
+      bottom: var(--dock-height, 4rem);
+      left: 0;
+      z-index: 54;
+      width: auto;
+      max-height: min(76dvh, calc(100dvh - var(--dock-height, 4rem) - var(--safe-top) - var(--space-8)));
+      border-width: 1px 0 0;
+      border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+      transform-origin: 50% 100%;
+      transition: translate var(--duration-sheet) var(--ease-out), display 260ms allow-discrete;
+    }
+
+    .queue-panel[aria-hidden="true"] {
+      opacity: 1;
+      scale: 1;
+      translate: 0 100%;
+      transition: translate 260ms var(--ease-exit), display 260ms allow-discrete;
+    }
+
+    @starting-style {
+      .queue-panel {
+        opacity: 1;
+        scale: 1;
+        translate: 0 100%;
+      }
+    }
+
+    .queue-panel.is-dragging {
+      transition: none;
+    }
+
+    .queue-panel::before {
+      position: absolute;
+      top: 0.4rem;
+      left: 50%;
+      width: 2.5rem;
+      height: 0.25rem;
+      border-radius: 999px;
+      background: var(--color-border-strong);
+      content: "";
+      translate: -50% 0;
+    }
+
+    .queue-panel__header {
+      padding-top: calc(var(--space-4) + 0.4rem);
+    }
+
+    /* Opened from the player's own sheet it rests on the screen's edge. */
+    html.has-player-sheet .queue-panel {
+      bottom: 0;
+      padding-bottom: var(--safe-bottom);
+    }
+  }
+
+  /* Opened from the player's own sheet, both panels lie over it. */
+  html.has-player-sheet :is(.queue-backdrop, .visualizer-backdrop) {
+    z-index: 57;
+  }
+
+  html.has-player-sheet :is(.queue-panel, .visualizer-panel) {
+    z-index: 58;
+  }
+
+  /* ======================================================================
+     The visualizer panel
+     ====================================================================== */
+
+  /* It is uncovered from its bottom edge and covered again the same way. The
+     resting clip stands well outside the panel (a negative inset), so that the
+     panel's shadow is not clipped away with it. */
+  .visualizer-panel {
+    position: fixed;
+    inset: calc(var(--space-5) + var(--safe-top)) calc(var(--space-5) + var(--safe-right)) calc(var(--dock-height, 6rem) + var(--space-3)) calc(var(--sidebar-width) + var(--space-5));
+    z-index: 52;
+    display: grid;
+    grid-template: 1fr / 1fr;
+    overflow: hidden;
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-xl);
+    background: var(--color-video-black);
+    box-shadow: var(--shadow-float);
+    clip-path: inset(-5rem);
+    transition:
+      opacity var(--duration-normal) var(--ease-out),
+      clip-path var(--duration-slow) var(--ease-out),
+      display var(--duration-exit) allow-discrete;
+  }
+
+  .visualizer-panel[aria-hidden="true"] {
+    display: none;
+    clip-path: inset(100% -5rem -5rem);
+    opacity: 0;
+    pointer-events: none;
+    transition:
+      opacity var(--duration-exit) var(--ease-exit),
+      clip-path var(--duration-exit) var(--ease-exit),
+      display var(--duration-exit) allow-discrete;
+  }
+
+  @starting-style {
+    .visualizer-panel {
+      clip-path: inset(100% -5rem -5rem);
+      opacity: 0;
+    }
+  }
+
+  /* The panel takes the focus when it opens, so that Tab and Escape start from
+     it. It is a region, not a control: no ring around the whole picture. */
+  .visualizer-panel:focus {
+    outline: 0;
+  }
+
+  .visualizer-panel:fullscreen {
+    inset: 0;
+    border: 0;
+    border-radius: 0;
+    clip-path: none;
+  }
+
+  .visualizer-panel__canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    /* A grid item cannot shrink below its own content by default, and for a
+       canvas that content is its pixel-buffer size. Leaving fullscreen would
+       otherwise keep the row as tall as the buffer the engine allocated for the
+       full screen, pushing the picture down and out of the panel — and because
+       the engine measures the canvas to decide that buffer size, it never
+       recovered on its own. */
+    min-width: 0;
+    min-height: 0;
+  }
+
+  /* The engine hides the 2D canvas while a WebGL visualizer (MilkDrop) draws;
+     the canvas rule says display: block, which would beat the attribute. */
+  .visualizer-panel__canvas[hidden] {
+    display: none;
+  }
+
+  /* Nobody is touching the picture: the toolbar fades away and the pointer with
+     it, the way a video player does. Keyboard use keeps the toolbar — its focus
+     is the only way back to it. `translate`, not `transform`: on a phone the
+     toolbar is centred with `transform: translateX(-50%)`, and an idle rule that
+     set `transform` took the centring away with it — the toolbar jumped half its
+     width to the right, off the screen, and slid back in from there on every
+     touch. The two properties add up instead of replacing one another. */
+  .visualizer-panel__toolbar {
+    position: absolute;
+    top: var(--space-4);
+    right: var(--space-4);
+    /* Above whatever a visualization lays over the picture: its own canvases and
+       layers come before the toolbar but may carry a z-index of their own. */
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-2);
+    border-radius: var(--radius-md);
+    background: rgb(var(--color-canvas-rgb) / 80%);
+    transition: opacity 320ms ease, translate 320ms ease;
+  }
+
+  .visualizer-panel__select {
+    width: min(14rem, 36vw);
+    background: rgb(var(--color-canvas-raised-rgb) / 92%);
+  }
+
+  .visualizer-panel__preset {
+    width: min(20rem, 38vw);
+  }
+
+  /* The preset and pack lists are list pickers (list-picker.css): the selects' look
+     belongs on the trigger, not on the box around it, whose square corners would show. */
+  .visualizer-panel__toolbar > .list-picker {
+    background: none;
+  }
+
+  .visualizer-panel__toolbar .list-picker__trigger {
+    background: rgb(var(--color-canvas-raised-rgb) / 92%);
+  }
+
+  /* The pack choice, beside the presets — only in a build that has packs of
+     its own (vendor/milkdrop-presets). */
+  .visualizer-panel__pack {
+    width: min(13rem, 28vw);
+  }
+
+  .visualizer-panel__preset.hidden,
+  .visualizer-panel__pack.hidden,
+  .visualizer-panel__preset-step.hidden,
+  .visualizer-panel__random.hidden,
+  .visualizer-panel__keep.hidden,
+  .visualizer-panel__favorite.hidden {
+    display: none;
+  }
+
+  /* With it the toolbar holds three selects, more than a narrower window has
+     room for: the toolbar stays inside the panel and the selects give up
+     width first (a set width is otherwise also their minimum); on a phone the
+     controls wrap onto a second row. */
+  .visualizer-panel__toolbar > .visualizer-panel__select {
+    min-width: 5.5rem;
+  }
+
+  /* "Random next" (the dice beside ‹ ›): lit in the accent, and ringed, while it is on. */
+  .visualizer-panel__random[aria-pressed="true"] {
+    box-shadow: inset 0 0 0 1px rgb(var(--color-accent-rgb) / 45%);
+  }
+
+  /* ‹ and › hug the preset list: narrower than the toolbar's buttons and closer to the select
+     (negative margins eat the toolbar's gap), so they read as part of it, not as the big
+     ⏮ ⏭ that change the visualizer. */
+  .visualizer-panel__toolbar > .visualizer-panel__preset-step {
+    inline-size: 1.5rem;
+    min-inline-size: 1.5rem;
+    padding-inline: 0;
+    font-size: 0.8em;
+  }
+
+  .visualizer-panel__toolbar > .visualizer-panel__preset-previous {
+    margin-inline-end: calc(var(--space-3) * -0.6);
+  }
+
+  .visualizer-panel__toolbar > .visualizer-panel__preset-next {
+    margin-inline-start: calc(var(--space-3) * -0.6);
+  }
+
+  .visualizer-panel__toolbar > .visualizer-panel__preset-step:disabled {
+    cursor: default;
+    opacity: 0.35;
+  }
+
+  /* The preset on screen is a favourite: the star lights up like a rating star. */
+  .visualizer-panel__favorite.is-active {
+    color: var(--color-warning);
+  }
+
+  .visualizer-panel.is-idle {
+    cursor: none;
+  }
+
+  .visualizer-panel.is-idle:not([data-input="keyboard"]) .visualizer-panel__toolbar {
+    opacity: 0;
+    pointer-events: none;
+    translate: 0 -0.5rem;
+  }
+
+  /* A visualization's own controls over the picture (VoltViz's overlays, Geiss's presets) rest
+     with the toolbar; a double click on them is not one on the picture (visualizer-panel.ts). */
+  .visualizer-panel__overlay {
+    transition: opacity 320ms ease, translate 320ms ease;
+  }
+
+  .visualizer-panel.is-idle:not([data-input="keyboard"]) .visualizer-panel__overlay {
+    opacity: 0;
+    pointer-events: none;
+    translate: 0 0.5rem;
+  }
+
+  /* Internal: each visualization on a canvas of its own; the next one fades in over the one
+     on screen (internal.ts, FADE_MS). */
+  .internal-stage {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .internal-stage__layer {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    transition: opacity 1200ms ease;
+  }
+
+  .internal-stage__layer.is-visible {
+    opacity: 1;
+  }
+
+  /* "Ulubione": the visualizer playing a favourite; one of another visualizer loads above it,
+     unseen, and fades in (favorites-visualizer.ts, FADE_MS). */
+  .favorites-stage {
+    position: relative;
+    overflow: hidden;
+    background: var(--color-black);
+  }
+
+  .favorites-stage__layer {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 1000ms ease;
+  }
+
+  .favorites-stage__layer.is-visible {
+    opacity: 1;
+  }
+
+  .favorites-stage__empty {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    margin: 0;
+    padding: var(--space-6, 2rem);
+    color: var(--color-text-muted);
+    font-size: 0.95rem;
+    line-height: 1.5;
+    text-align: center;
+    text-wrap: balance;
+  }
+
+  .favorites-stage__empty[hidden] {
+    display: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .visualizer-panel__toolbar,
+    .visualizer-panel__overlay,
+    .internal-stage__layer,
+    .favorites-stage__layer {
+      transition: none;
+    }
+  }
+
+  @media (min-width: 46.0625rem) {
+    .visualizer-panel__toolbar {
+      max-width: calc(100% - 2 * var(--space-4));
+    }
+  }
+
+  @media (max-width: 64rem) {
+    .visualizer-panel {
+      left: calc(var(--space-5) + var(--safe-left));
+    }
+  }
+
+  @media (max-width: 46rem) {
+    .visualizer-panel {
+      inset: calc(var(--space-2) + var(--safe-top)) calc(var(--space-2) + var(--safe-right)) calc(var(--dock-height, 4rem) + var(--space-2)) calc(var(--space-2) + var(--safe-left));
+    }
+
+    /* Centred so it does not collide with the panel's edge. */
+    .visualizer-panel__toolbar {
+      top: var(--space-2);
+      right: auto;
+      left: 50%;
+      width: max-content;
+      max-width: calc(100% - 2 * var(--space-3));
+      flex-wrap: wrap;
+      justify-content: center;
+      transform: translateX(-50%);
+    }
+
+    .visualizer-panel__select {
+      width: min(11rem, 46vw);
+    }
+
+    /* Opened from the player's own sheet: down to the screen's edge. */
+    html.has-player-sheet .visualizer-panel {
+      bottom: calc(var(--space-2) + var(--safe-bottom));
+    }
+  }
+}

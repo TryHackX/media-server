@@ -1,0 +1,31 @@
+{
+  "name": "tryhackx-media-web",
+  "version": "1.0.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "test:ui": "node --test src/shared/player-state.test.ts src/shared/visualizations/registry.test.ts src/shared/visualizations/random-next.test.ts src/shared/visualizations/audio-rate.test.ts src/shared/visualizations/fable/catalog.test.ts src/shared/visualizations/fable/core/adaptive.test.ts src/shared/visualizations/fable/core/audio.test.ts src/shared/visualizations/avs/webvs/avsTrans.test.ts src/shared/visualizations/avs/webvs/avsDraw.test.ts src/shared/visualizations/avs/webvs/trans/mirrorFade.test.ts src/shared/visualizations/avs/webvs/trans/dmoveTable.test.ts src/shared/visualizations/avs/webvs/trans/addBorders.test.ts src/shared/visualizations/avs/webvs/componentFields.test.ts src/shared/visualizations/avs/webvs/trans/videoDelayRing.test.ts src/shared/visualizations/avs/webvs/trans/multiDelayRing.test.ts src/shared/visualizations/avs/webvs/render/texerV1Frame.test.ts src/shared/visualizations/avs/webvs/render/texerParticle.test.ts src/shared/visualizations/avs/webvs/render/triangleRaster.test.ts src/shared/visualizations/avs/webvs/trans/convolutionCpu.test.ts src/shared/visualizations/avs/webvs/trans/convolutionWasm.test.ts src/shared/visualizations/avs/webvs/trans/grainDice.test.ts src/shared/visualizations/avs/webvs/ape/config.test.ts scripts/avs-apes.test.mjs src/shared/visualizations/avs/packs.test.ts src/shared/visualizations/avs/webvs/mscopes/analysis.test.ts src/shared/visualizations/avs/eel-math.test.ts src/shared/visualizations/avs/eel-wasm-backend.test.ts src/shared/visualizations/avs/eel-grouping.test.ts src/shared/visualizations/avs/eel2-parser.test.ts src/shared/visualizations/avs/ns-eel-syntax.test.ts src/shared/visualizations/avs/winamp-visdata.test.ts src/shared/visualizations/milkdrop.test.ts src/shared/visualizations/milkdrop-packs.test.ts src/shared/visualizations/milkdrop-textures.test.ts src/shared/visualizations/soundforms.test.ts src/shared/visualizations/geiss.test.ts src/shared/visualizations/geiss-presets.test.ts src/shared/visualizations/geiss-messages.test.ts src/shared/visualizations/voltviz-logo.test.ts src/shared/visualizations/voltviz-icons.test.ts src/shared/visualizations/voltviz-halftone.test.ts src/shared/visualizations/retro/retro.test.ts src/shared/visualizations/retro/trackers.test.ts src/shared/visualizations/retro/trackers-sound.test.ts src/shared/visualizations/retro/trackers-amiga2.test.ts src/shared/visualizations/retro/trackers-gui.test.ts src/shared/visualizations/retro/trackers-8bit.test.ts src/shared/visualizations/retro/trackers-cpc.test.ts src/shared/visualizations/retro/cthugha98.test.ts src/shared/visualizations/retro/vsg.test.ts src/shared/i18n.test.ts src/shared/list-picker-model.test.ts src/shared/visualizations/preset-search.test.ts src/shared/device-label.test.ts src/shared/seek-gesture.test.ts src/shared/landing.test.ts src/shared/mp4-codecs.test.ts src/shared/service-worker.test.ts src/shared/icons.test.ts src/shared/icon-styles.test.ts scripts/icon-packs.test.mjs scripts/milkdrop-hlsl.test.mjs scripts/milkdrop-presets.test.mjs scripts/butterchurn-patches.test.mjs scripts/shader-visualizers.test.mjs scripts/webvsc.test.mjs scripts/avs-presets.test.mjs src/shared/pow.test.ts src/shared/qr.test.ts src/shared/random-id.test.ts src/shared/datetime.test.ts src/shared/rating-steps.test.ts src/shared/media-labels.test.ts src/shared/media-session.test.ts src/shared/library-labels.test.ts src/shared/theme.test.ts src/shared/motion-math.test.ts scripts/theme-boot.test.mjs src/shared/home-model.test.ts src/shared/action-menu-place.test.ts"
+  },
+  "devDependencies": {
+    "hlslparser-js": "0.1.1",
+    "milkdrop-preset-utils": "0.1.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.2.1"
+  },
+  "dependencies": {
+    "@fortawesome/fontawesome-free": "^7.3.0",
+    "butterchurn": "3.0.0-beta.5",
+    "butterchurn-presets": "3.0.0-beta.4",
+    "cropperjs": "^1.6.2",
+    "d3-geo": "3.1.1",
+    "eel-wasm": "0.0.16",
+    "eventemitter3": "3.1.2",
+    "lodash-es": "4.18.1",
+    "lucide": "1.59.0",
+    "three": "0.186.1"
+  }
+}

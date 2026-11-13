@@ -1,0 +1,16 @@
+/* What every page needs — the two outside the application too (sign-in, the
+   guest link): the icons, the tokens, the reset, the components and public.css.
+   The application adds app.css (router.ts).
+
+   The order of the layers is stated here and again in app.css, so that it does
+   not depend on which of the two files a browser happens to read first. */
+@layer tokens, reset, base, components, utilities, pages;
+
+@import "./icons.css";
+@import "@fortawesome/fontawesome-free/css/solid.min.css";
+@import "./tokens.css";
+@import "./reset.css";
+@import "./base.css";
+@import "./components.css";
+@import "./utilities.css";
+@import "./public.css";

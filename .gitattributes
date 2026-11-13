@@ -1,0 +1,11 @@
+* text=auto
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+*.psd1 text eol=crlf
+*.cmd text eol=crlf
+*.sh text eol=lf
+# Templates of the VPS bundle (shell script, Apache sites, guides): they end up on Linux, and a
+# Windows checkout (core.autocrlf=true, as on CI's Windows runners) must not give them CR LF.
+*.tmpl text eol=lf
+*.py text eol=lf
+*.php text eol=lf
